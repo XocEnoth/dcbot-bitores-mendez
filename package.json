@@ -1,0 +1,21 @@
+{
+  "name": "dcbot-bitores-mendez",
+  "version": "1.0.0",
+  "description": "A modular Discord bot built with discord.js and ES6 modules",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "discord.js"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2"
+  }
+}
