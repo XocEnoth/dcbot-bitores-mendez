@@ -19,7 +19,7 @@ A modular, scalable Discord bot built with **discord.js v14** and **ES6 modules*
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/XocEnoth/dcbot-bitores-mendez.git
 cd dcbot-bitores-mendez
 ```
 
@@ -62,9 +62,9 @@ npm run dev
 
 ## 🎮 Commands
 
-| Command    | Description                              |
-| ---------- | ---------------------------------------- |
-| `bm!ping`  | Shows bot latency and API latency        |
+| Command   | Description                       |
+| --------- | --------------------------------- |
+| `bm!ping` | Shows bot latency and API latency |
 
 ---
 
@@ -109,11 +109,11 @@ dcbot-bitores-mendez/
 1. Create a new `.js` file inside `src/commands/<category>/`:
 
 ```js
-const name = 'hello';
-const description = 'Replies with a greeting';
+const name = "hello";
+const description = "Replies with a greeting";
 
 const execute = async (message, args) => {
-  await message.reply('👋 Hello!');
+    await message.reply("👋 Hello!");
 };
 
 export default { name, description, execute };
@@ -128,10 +128,10 @@ export default { name, description, execute };
 1. Create a new `.js` file inside `src/events/<category>/`:
 
 ```js
-const name = 'guildCreate';
+const name = "guildCreate";
 
 const execute = async (guild) => {
-  console.log(`Joined new server: ${guild.name}`);
+    console.log(`Joined new server: ${guild.name}`);
 };
 
 export default { name, execute };
