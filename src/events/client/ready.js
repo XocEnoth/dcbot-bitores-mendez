@@ -8,7 +8,7 @@ const once = true;
 const execute = async (client) => {
     logger.success(`Bot is online as ${client.user.tag}`);
     logger.info(`Serving ${client.guilds.cache.size} server(s)`);
-    logger.info(`Loaded ${client.commands.size} command(s)`);
+    // logger.info(`Loaded ${client.commands.size} command(s)`);
 
     // Set Rich Presence
     client.user.setPresence({
