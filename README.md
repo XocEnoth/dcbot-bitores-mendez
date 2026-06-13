@@ -65,6 +65,7 @@ npm run dev
 | Command   | Description                       |
 | --------- | --------------------------------- |
 | `bm!ping` | Shows bot latency and API latency |
+| `bm!help` | Interactive bot help & statistics |
 
 ---
 
@@ -76,6 +77,7 @@ dcbot-bitores-mendez/
 ├── src/
 │   ├── commands/              # Bot commands, grouped by category
 │   │   └── utility/
+│   │       ├── help.js        # Help & bot stats command
 │   │       └── ping.js        # Ping command
 │   │
 │   ├── events/                # Discord event listeners, grouped by type
