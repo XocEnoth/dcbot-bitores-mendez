@@ -10,8 +10,7 @@ import config from "../../config/index.js";
 import logger from "../../utils/logger.js";
 
 const name = "help";
-const description =
-    "Display the interactive help menu and bot statistics";
+const description = "Display the interactive help menu and bot statistics";
 
 const execute = async (message) => {
     const client = message.client;
@@ -60,9 +59,7 @@ const execute = async (message) => {
         const generalEmbed = new EmbedBuilder()
             .setColor("#ed4245")
             .setTitle("⚙️ General Commands")
-            .setDescription(
-                "Here is the list of currently available commands:",
-            )
+            .setDescription("Here is the list of currently available commands:")
             .addFields(
                 {
                     name: "Utility",
@@ -71,7 +68,7 @@ const execute = async (message) => {
                 },
                 {
                     name: "Music",
-                    value: `\`${config.prefix}music play <query/url>\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music 247 on/off\`\nToggle 24/7 mode.`,
+                    value: `\`${config.prefix}music play <query/url> [page]\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music 247 [on/off]\`\nToggle 24/7 mode.`,
                     inline: false,
                 },
             )
@@ -100,8 +97,14 @@ const execute = async (message) => {
             .setEmoji("⬅️")
             .setStyle(ButtonStyle.Danger);
 
-        const rowHome = new ActionRowBuilder().addComponents(generalBtn, inviteBtn);
-        const rowGeneral = new ActionRowBuilder().addComponents(backBtn, inviteBtn);
+        const rowHome = new ActionRowBuilder().addComponents(
+            generalBtn,
+            inviteBtn,
+        );
+        const rowGeneral = new ActionRowBuilder().addComponents(
+            backBtn,
+            inviteBtn,
+        );
 
         let isGeneral = false;
 
@@ -121,8 +124,7 @@ const execute = async (message) => {
             // Protection: Only the command author can click the buttons
             if (interaction.user.id !== message.author.id) {
                 await interaction.reply({
-                    content:
-                        "❌ You cannot use someone else's help menu.",
+                    content: "❌ You cannot use someone else's help menu.",
                     flags: MessageFlags.Ephemeral,
                 });
                 return;
@@ -132,11 +134,17 @@ const execute = async (message) => {
                 if (interaction.customId === "btn_general") {
                     isGeneral = true;
                     // Update embed to General Commands page
-                    await interaction.update({ embeds: [generalEmbed], components: [rowGeneral] });
+                    await interaction.update({
+                        embeds: [generalEmbed],
+                        components: [rowGeneral],
+                    });
                 } else if (interaction.customId === "btn_back") {
                     isGeneral = false;
                     // Update embed back to Home page
-                    await interaction.update({ embeds: [homeEmbed], components: [rowHome] });
+                    await interaction.update({
+                        embeds: [homeEmbed],
+                        components: [rowHome],
+                    });
                 } else if (interaction.customId === "btn_invite") {
                     // Generate Automatic Bot Invite Link
                     const inviteLink = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot`;
@@ -155,8 +163,10 @@ const execute = async (message) => {
             try {
                 // After 5 minutes, disable all active buttons
                 const disabledRow = new ActionRowBuilder().addComponents(
-                    isGeneral ? backBtn.setDisabled(true) : generalBtn.setDisabled(true),
-                    inviteBtn.setDisabled(true)
+                    isGeneral
+                        ? backBtn.setDisabled(true)
+                        : generalBtn.setDisabled(true),
+                    inviteBtn.setDisabled(true),
                 );
                 // Edit existing message with disabled buttons
                 await reply.edit({ components: [disabledRow] }).catch(() => {});
