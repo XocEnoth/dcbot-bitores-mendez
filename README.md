@@ -57,7 +57,9 @@ DISCORD_TOKEN=your_bot_token_here
 BOT_PREFIX=bm!
 ```
 
-*Note: Spotify Client credentials are no longer needed as the bot utilizes an advanced public scraper fallback to fetch Spotify track metadata directly.*
+*Optional Configuration:*
+- **YouTube API Key (`YOUTUBE_API_KEY`)**: Highly recommended if you intend to play massive YouTube playlists (e.g., 500+ songs). Without it, the bot will use a scraping fallback that is strictly capped by YouTube at 200 items per playlist due to "Unavailable videos are hidden" UI errors. Get this key for free from the Google Cloud Console.
+- **Spotify Credentials (`SPOTIFY_CLIENT_ID` & `SPOTIFY_CLIENT_SECRET`)**: No longer required. The bot utilizes an advanced public scraper fallback to fetch Spotify track metadata directly without a developer key.
 
 ---
 

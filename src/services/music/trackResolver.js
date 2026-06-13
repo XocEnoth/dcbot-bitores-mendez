@@ -1,5 +1,6 @@
 import play from 'play-dl';
 import logger from '../../utils/logger.js';
+import config from '../../config/index.js';
 
 // --- YouTube helpers ---
 
@@ -272,6 +273,86 @@ const resolveSpotifyCollection = async (url, parsed, page = 1) => {
   return resolved;
 };
 
+// --- YouTube Data API helpers ---
+
+const parseIsoDuration = (duration) => {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const h = parseInt(match[1] || '0', 10);
+  const m = parseInt(match[2] || '0', 10);
+  const s = parseInt(match[3] || '0', 10);
+  return (h * 3600 + m * 60 + s) * 1000;
+};
+
+const formatRawDuration = (ms) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+const resolveYouTubePlaylistApi = async (playlistId, page) => {
+  const API_KEY = config.youtubeApiKey;
+  let allItems = [];
+  let nextPageToken = '';
+  
+  logger.info(`Fetching playlist ${playlistId} via YouTube API...`);
+  
+  while (true) {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`);
+    if (!res.ok) {
+      throw new Error(`YouTube API Error: ${res.status}`);
+    }
+    const data = await res.json();
+    if (!data.items) break;
+    allItems.push(...data.items);
+    nextPageToken = data.nextPageToken;
+    if (!nextPageToken) break;
+  }
+  
+  const validItems = allItems.filter(item => 
+    item.snippet.title !== 'Private video' && 
+    item.snippet.title !== 'Deleted video'
+  );
+  
+  if (validItems.length === 0) throw new Error('Playlist is empty or all videos are private.');
+  
+  const MAX = 50;
+  const startIndex = (page - 1) * MAX;
+  const limited = validItems.slice(startIndex, startIndex + MAX);
+  
+  if (limited.length === 0) {
+    throw new Error(`Page ${page} is empty. The playlist only has ${Math.ceil(validItems.length / MAX)} page(s).`);
+  }
+  
+  const videoIds = limited.map(item => item.snippet.resourceId.videoId).join(',');
+  const vidRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${API_KEY}`);
+  if (!vidRes.ok) throw new Error('Failed to fetch video durations.');
+  const vidData = await vidRes.json();
+  
+  const durationMap = {};
+  if (vidData.items) {
+    for (const v of vidData.items) {
+      durationMap[v.id] = parseIsoDuration(v.contentDetails.duration);
+    }
+  }
+  
+  return limited.map(item => {
+    const videoId = item.snippet.resourceId.videoId;
+    const durationMs = durationMap[videoId] || 0;
+    return {
+      title: item.snippet.title,
+      author: item.snippet.videoOwnerChannelTitle || 'Unknown Artist',
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      duration: durationMs,
+      durationRaw: formatRawDuration(durationMs),
+      thumbnail: item.snippet.thumbnails?.default?.url || item.snippet.thumbnails?.high?.url || null,
+    };
+  });
+};
+
 // --- Main resolver ---
 
 const resolve = async (query, page = 1) => {
@@ -285,7 +366,18 @@ const resolve = async (query, page = 1) => {
 
   // YouTube playlist URL
   if (validated === 'yt_playlist') {
-    const playlist = await play.playlist_info(query, { incomplete: true });
+    if (config.youtubeApiKey) {
+      const match = query.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+      if (match) {
+        try {
+          return await resolveYouTubePlaylistApi(match[1], page);
+        } catch (error) {
+          logger.warn(`YouTube API failed for playlist ${match[1]}: ${error.message}. Falling back to play-dl...`);
+        }
+      }
+    }
+
+    const playlist = await play.playlist_info(query, { incomplete: false });
     const videos = await playlist.all_videos();
     const MAX = 50;
     const startIndex = (page - 1) * MAX;

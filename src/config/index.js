@@ -28,6 +28,7 @@ const config = Object.freeze({
     clientId: process.env.SPOTIFY_CLIENT_ID || null,
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET || null,
   }),
+  youtubeApiKey: process.env.YOUTUBE_API_KEY || null,
 });
 
 export default config;

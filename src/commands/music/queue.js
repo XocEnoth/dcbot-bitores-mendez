@@ -1,7 +1,7 @@
 import playerManager from '../../services/music/playerManager.js';
 import config from '../../config/index.js';
 import { buildQueueEmbed, buildQueueButtons, TRACKS_PER_PAGE } from '../../utils/queueBuilder.js';
-import { ComponentType, MessageFlags } from 'discord.js';
+
 
 const name = 'queue';
 const description = 'Display the track queue';
@@ -16,7 +16,7 @@ const execute = async (message) => {
   const totalPages = Math.ceil(player.queue.length / TRACKS_PER_PAGE);
   let currentPage = 0;
 
-  const reply = await message.reply({
+  await message.reply({
     embeds: [buildQueueEmbed(player, currentPage)],
     components: totalPages > 1 ? [buildQueueButtons(player, currentPage)] : [],
   });
