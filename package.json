@@ -4,6 +4,9 @@
   "description": "A modular Discord bot built with discord.js and ES6 modules",
   "main": "src/index.js",
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "preinstall": "node -e \"process.env.YOUTUBE_DL_SKIP_PYTHON_CHECK='1'\"",
     "start": "node src/index.js",

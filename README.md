@@ -1,7 +1,7 @@
 # 🤖 Bitores Mendez Discord Bot
 
 [![discord.js](https://img.shields.io/badge/discord.js-v14.26-blue.svg?logo=discord&logoColor=white)](https://discord.js.org/)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A modular, highly scalable Discord bot built with **discord.js v14** and modern **ES6 modules**. Features a high-performance music playback engine with native support for YouTube and Spotify URLs, complete with an interactive button-based player interface.
@@ -23,7 +23,7 @@ A modular, highly scalable Discord bot built with **discord.js v14** and modern 
 ## 📋 Prerequisites
 
 Before setting up the bot, ensure you have the following installed:
-- [Node.js](https://nodejs.org/) v18.0.0 or higher.
+- [Node.js](https://nodejs.org/) v22.12.0 or higher (Required for newer discordjs/voice versions).
 - [FFmpeg](https://ffmpeg.org/) (automatically managed via `ffmpeg-static` dependency; no manual system installation required).
 
 ### Discord Bot Token Setup
@@ -194,10 +194,11 @@ Add `once: true` to the export if the event should only run once (like `ready`).
 
 ## 🚀 Deployment (e.g., Railway)
 
-This repository is optimized for quick hosting providers like [Railway](https://railway.app):
+This repository is heavily optimized for quick deployment to hosting providers like [Railway](https://railway.app) using **Nixpacks**:
 1. Create a new project on Railway and connect your repository.
-2. Under Variables, add the required keys (`DISCORD_TOKEN`, `BOT_PREFIX`).
-3. Railway will auto-detect the Node.js project, install dependencies, and start the bot automatically.
+2. In your Railway project settings, ensure the **Builder** is set to **Nixpacks** (this is usually the default). Nixpacks will automatically read the `nixpacks.toml` file to install Node 22, Python 3, and FFmpeg.
+3. Under Variables, add the required keys (`DISCORD_TOKEN`, `BOT_PREFIX`, `YOUTUBE_API_KEY`).
+4. Railway will auto-detect everything, install dependencies, and start the bot automatically.
 
 ---
 
