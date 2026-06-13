@@ -137,12 +137,23 @@ class MusicPlayer {
         q: '',
         f: 'bestaudio/best',
         r: '100K',
+        forceIpv4: true,
+        geoBypass: true,
+        noWarnings: true,
       });
 
       this._currentProcess = subprocess;
 
-      // Prevent unhandled rejection from tinyspawn when process is killed/fails
       subprocess.catch(() => {});
+
+      if (subprocess.stderr) {
+        subprocess.stderr.on('data', (data) => {
+          const msg = data.toString();
+          if (!msg.includes('Broken pipe') && !msg.includes('Invalid argument')) {
+            logger.warn(`yt-dlp stderr: ${msg}`);
+          }
+        });
+      }
 
       if (!subprocess.stdout) {
         throw new Error('Failed to create audio stream');
