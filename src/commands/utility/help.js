@@ -11,13 +11,13 @@ import logger from "../../utils/logger.js";
 
 const name = "help";
 const description =
-    "Menampilkan menu bantuan dan statistik bot yang interaktif";
+    "Display the interactive help menu and bot statistics";
 
 const execute = async (message) => {
     const client = message.client;
 
     try {
-        // Menghitung statistik bot
+        // Calculate bot statistics
         const totalServers = client.guilds.cache.size;
         const totalUsers = client.guilds.cache.reduce(
             (acc, guild) => acc + guild.memberCount,
@@ -25,7 +25,7 @@ const execute = async (message) => {
         );
         const latency = Math.round(client.ws.ping);
 
-        // Format Uptime menjadi D H M S
+        // Format Uptime to D H M S
         let totalSeconds = client.uptime / 1000;
         const days = Math.floor(totalSeconds / 86400);
         totalSeconds %= 86400;
@@ -35,18 +35,18 @@ const execute = async (message) => {
         const seconds = Math.floor(totalSeconds % 60);
         const uptimeString = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-        // 1. Embed Utama (Statistik & Info)
+        // 1. Main Embed (Statistics & Info)
         const homeEmbed = new EmbedBuilder()
-            .setColor("#ed4245") // Warna merah khas tema bot
-            .setTitle("🤖 Bitores Mendez - Bantuan & Informasi")
+            .setColor("#ed4245") // Red color signature of bot theme
+            .setTitle("🤖 Bitores Mendez - Help & Information")
             .setDescription(
-                "Selamat datang di menu bantuan! Silakan gunakan tombol di bawah untuk menavigasi.",
+                "Welcome to the help menu! Please use the buttons below to navigate.",
             )
             .setThumbnail(
                 client.user.displayAvatarURL({ dynamic: true, size: 512 }),
             )
             .addFields({
-                name: "📊 Statistik Bot",
+                name: "📊 Bot Statistics",
                 value: `\`\`\`yaml\nServers : ${totalServers}\nUsers   : ${totalUsers}\nLatency : ${latency}ms\nUptime  : ${uptimeString}\n\`\`\``,
                 inline: false,
             })
@@ -56,25 +56,32 @@ const execute = async (message) => {
             })
             .setTimestamp();
 
-        // 2. Embed Daftar Command
+        // 2. Command List Embed
         const generalEmbed = new EmbedBuilder()
             .setColor("#ed4245")
             .setTitle("⚙️ General Commands")
             .setDescription(
-                "Berikut adalah daftar command yang tersedia saat ini:",
+                "Here is the list of currently available commands:",
             )
-            .addFields({
-                name: "Utility",
-                value: `\`${config.prefix}ping\`\nMenampilkan latency bot dan API.\n\n\`${config.prefix}help\`\nMenampilkan menu bantuan ini.`,
-                inline: false,
-            })
+            .addFields(
+                {
+                    name: "Utility",
+                    value: `\`${config.prefix}ping\`\nDisplay bot and API latency.\n\n\`${config.prefix}help\`\nDisplay this help menu.`,
+                    inline: false,
+                },
+                {
+                    name: "Music",
+                    value: `\`${config.prefix}music play <query/url>\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music 247 on/off\`\nToggle 24/7 mode.`,
+                    inline: false,
+                },
+            )
             .setFooter({
                 text: `${client.user.username} v1.0.0`,
                 iconURL: client.user.displayAvatarURL(),
             })
             .setTimestamp();
 
-        // Membuat Tombol
+        // Create Buttons
         const generalBtn = new ButtonBuilder()
             .setCustomId("btn_general")
             .setLabel("General")
@@ -98,24 +105,24 @@ const execute = async (message) => {
 
         let isGeneral = false;
 
-        // Mengirim pesan bantuan
+        // Send help message
         const reply = await message.reply({
             embeds: [homeEmbed],
             components: [rowHome],
         });
 
-        // Membuat Collector yang akan kadaluarsa dalam 5 menit (300000 ms)
+        // Create Collector that expires in 5 minutes (300000 ms)
         const collector = reply.createMessageComponentCollector({
             componentType: ComponentType.Button,
-            time: 300000, // 5 menit
+            time: 300000, // 5 minutes
         });
 
         collector.on("collect", async (interaction) => {
-            // Proteksi: Hanya pembuat command yang bisa menekan tombol
+            // Protection: Only the command author can click the buttons
             if (interaction.user.id !== message.author.id) {
                 await interaction.reply({
                     content:
-                        "❌ Kamu tidak dapat menggunakan menu bantuan milik orang lain.",
+                        "❌ You cannot use someone else's help menu.",
                     flags: MessageFlags.Ephemeral,
                 });
                 return;
@@ -124,19 +131,19 @@ const execute = async (message) => {
             try {
                 if (interaction.customId === "btn_general") {
                     isGeneral = true;
-                    // Update embed menjadi halaman General Commands
+                    // Update embed to General Commands page
                     await interaction.update({ embeds: [generalEmbed], components: [rowGeneral] });
                 } else if (interaction.customId === "btn_back") {
                     isGeneral = false;
-                    // Update embed kembali ke halaman Home
+                    // Update embed back to Home page
                     await interaction.update({ embeds: [homeEmbed], components: [rowHome] });
                 } else if (interaction.customId === "btn_invite") {
-                    // Generate Link Invite Bot Otomatis
+                    // Generate Automatic Bot Invite Link
                     const inviteLink = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot`;
 
                     await interaction.reply({
-                        content: `🔗 **Gunakan tautan berikut untuk mengundang ${client.user.username}:**\n${inviteLink}`,
-                        flags: MessageFlags.Ephemeral, // Hanya terlihat oleh user yang menekan tombol
+                        content: `🔗 **Use the following link to invite ${client.user.username}:**\n${inviteLink}`,
+                        flags: MessageFlags.Ephemeral, // Only visible to the user who clicked
                     });
                 }
             } catch (error) {
@@ -146,21 +153,21 @@ const execute = async (message) => {
 
         collector.on("end", async () => {
             try {
-                // Setelah 5 menit, matikan semua tombol yang sedang aktif
+                // After 5 minutes, disable all active buttons
                 const disabledRow = new ActionRowBuilder().addComponents(
                     isGeneral ? backBtn.setDisabled(true) : generalBtn.setDisabled(true),
                     inviteBtn.setDisabled(true)
                 );
-                // Edit pesan yang sudah ada dengan tombol yang didisable
+                // Edit existing message with disabled buttons
                 await reply.edit({ components: [disabledRow] }).catch(() => {});
             } catch (error) {
-                // Abaikan jika pesan asli sudah dihapus oleh user
+                // Ignore if the original message was deleted by the user
             }
         });
     } catch (error) {
         logger.error("Error sending help command", error);
         await message
-            .reply("❌ Terjadi kesalahan saat memuat menu bantuan.")
+            .reply("❌ An error occurred while loading the help menu.")
             .catch(() => {});
     }
 };

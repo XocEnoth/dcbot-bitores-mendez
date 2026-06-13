@@ -1,10 +1,10 @@
 const name = "ping";
-const description = "Menampilkan latency bot dan API Discord";
+const description = "Display bot and Discord API latency";
 
 const execute = async (message) => {
     const sentTimestamp = Date.now();
 
-    const reply = await message.reply("🏓 Mengukur latency...");
+    const reply = await message.reply("🏓 Measuring latency...");
 
     const roundtripLatency = Date.now() - sentTimestamp;
     const apiLatency = Math.round(message.client.ws.ping);

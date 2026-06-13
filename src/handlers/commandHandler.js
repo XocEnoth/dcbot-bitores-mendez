@@ -17,6 +17,8 @@ const loadCommands = async (client) => {
     const files = await readdir(folderPath);
     const commandFiles = files.filter((file) => file.endsWith('.js'));
 
+    const subcommands = new Collection();
+
     for (const file of commandFiles) {
       const filePath = join(folderPath, file);
       const fileUrl = pathToFileURL(filePath).href;
@@ -27,7 +29,38 @@ const loadCommands = async (client) => {
         continue;
       }
 
-      client.commands.set(command.name, command);
+      if (command.subcommand) {
+        subcommands.set(command.name, command);
+      } else {
+        client.commands.set(command.name, command);
+      }
+    }
+
+    // Create a router command for subcommand groups
+    if (subcommands.size > 0) {
+      const subNames = [...subcommands.keys()].map((k) => `\`${k}\``).join(', ');
+
+      client.commands.set(folder.name, {
+        name: folder.name,
+        description: `${folder.name} commands`,
+        subcommands,
+        execute: async (message, args) => {
+          const subName = args.shift()?.toLowerCase();
+
+          if (!subName) {
+            return message.reply(`❌ Subcommand is required. Available: ${subNames}`);
+          }
+
+          const sub = subcommands.get(subName);
+          if (!sub) {
+            return message.reply(`❌ Subcommand "${subName}" not found. Available: ${subNames}`);
+          }
+
+          await sub.execute(message, args);
+        },
+      });
+
+      logger.info(`Loaded ${subcommands.size} subcommand(s) for "${folder.name}"`);
     }
   }
 

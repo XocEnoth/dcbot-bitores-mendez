@@ -1,4 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
+import 'ffmpeg-static';
 import config from './config/index.js';
 import logger from './utils/logger.js';
 import loadCommands from './handlers/commandHandler.js';
@@ -9,6 +10,7 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 

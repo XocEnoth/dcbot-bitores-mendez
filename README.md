@@ -1,71 +1,99 @@
-# 🤖 DCBot Bitores Mendez
+# 🤖 Bitores Mendez Discord Bot
 
-A modular, scalable Discord bot built with **discord.js v14** and **ES6 modules**.
+[![discord.js](https://img.shields.io/badge/discord.js-v14.26-blue.svg?logo=discord&logoColor=white)](https://discord.js.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+A modular, highly scalable Discord bot built with **discord.js v14** and modern **ES6 modules**. Features a high-performance music playback engine with native support for YouTube and Spotify URLs, complete with an interactive button-based player interface.
+
+---
+
+## ✨ Features
+
+- **Modular Architecture**: Command and event handlers load dynamically, allowing you to add new features seamlessly.
+- **Advanced Music Engine**: Play, pause, resume, skip, stop, and queue tracks. Includes a **24/7 mode** to keep the bot connected.
+- **Dynamic Track Resolution**:
+  - Resolves YouTube videos, playlists, and search queries.
+  - Automatically parses Spotify tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Spotify Developer API credentials required!).
+- **Interactive Controls**: Beautiful, rich embeds with live-updating buttons for real-time player control.
+- **Color-Coded Logging**: Clean, formatted console logging for ease of debugging and server health monitoring.
 
 ---
 
 ## 📋 Prerequisites
 
-- [Node.js](https://nodejs.org/) v18.0.0 or higher
-- A Discord Bot Token — [Create one here](https://discord.com/developers/applications)
+Before setting up the bot, ensure you have the following installed:
+- [Node.js](https://nodejs.org/) v18.0.0 or higher.
+- [FFmpeg](https://ffmpeg.org/) (automatically managed via `ffmpeg-static` dependency; no manual system installation required).
 
-> **Important:** Enable the **Message Content Intent** in your bot's settings at  
-> `Discord Developer Portal → Your Application → Bot → Privileged Gateway Intents → Message Content Intent`
+### Discord Bot Token Setup
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Create a new Application, navigate to the **Bot** tab, and copy your Token.
+3. Enable the **Message Content Intent** under `Privileged Gateway Intents` in the Bot tab (this is required to read prefix-based commands).
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation & Setup
 
-### 1. Clone the repository
-
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/XocEnoth/dcbot-bitores-mendez.git
 cd dcbot-bitores-mendez
 ```
 
-### 2. Install dependencies
-
+### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 3. Setup environment variables
-
-Copy the example file and fill in your bot token:
-
+### 3. Setup Environment Variables
+Copy the template environment file:
 ```bash
 cp .env.example .env
 ```
-
-Edit `.env`:
-
+Open `.env` and fill in your Discord Bot Token and preferred command prefix:
 ```env
 DISCORD_TOKEN=your_bot_token_here
 BOT_PREFIX=bm!
 ```
 
-### 4. Run the bot
+*Note: Spotify Client credentials are no longer needed as the bot utilizes an advanced public scraper fallback to fetch Spotify track metadata directly.*
 
-**Production:**
+---
 
-```bash
-npm start
-```
+## 🎮 Execution
 
-**Development (auto-restart on file changes):**
-
+### Development Mode (Hot-reloading enabled)
 ```bash
 npm run dev
 ```
 
+### Production Mode
+```bash
+npm start
+```
+
 ---
 
-## 🎮 Commands
+## 🛠 Command List
 
-| Command   | Description                       |
-| --------- | --------------------------------- |
-| `bm!ping` | Shows bot latency and API latency |
-| `bm!help` | Interactive bot help & statistics |
+### Utility Commands
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `bm!ping` | None | Measures and displays bot latency and Discord API latency. |
+| `bm!help` | None | Shows an interactive statistics page and command list with navigation buttons. |
+
+### Music Commands
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `bm!music play` | `<query or URL> [page]` | Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists. |
+| `bm!music pause` | None | Pauses the current audio playback. |
+| `bm!music resume`| None | Resumes the paused audio playback. |
+| `bm!music skip`  | None | Skips the current playing song. |
+| `bm!music stop`  | None | Stops playback, clears the queue, and resets the player status. |
+| `bm!music leave` | None | Disconnects the bot from the voice channel and cleans up resources. |
+| `bm!music queue` | None | Displays the current music queue with interactive pagination buttons. |
+| `bm!music 247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
 
 ---
 
@@ -73,46 +101,55 @@ npm run dev
 
 ```
 dcbot-bitores-mendez/
-│
 ├── src/
-│   ├── commands/              # Bot commands, grouped by category
-│   │   └── utility/
-│   │       ├── help.js        # Help & bot stats command
-│   │       └── ping.js        # Ping command
-│   │
-│   ├── events/                # Discord event listeners, grouped by type
+│   ├── index.js                 # App Entry Point - initializes client & event loops
+│   ├── commands/                # Bot command categories
+│   │   ├── music/               # Music subcommand group
+│   │   │   ├── play.js          # Play song/playlist
+│   │   │   ├── pause.js         # Pause audio
+│   │   │   ├── resume.js        # Resume audio
+│   │   │   ├── skip.js          # Skip current song
+│   │   │   ├── stop.js          # Stop & clear queue
+│   │   │   ├── leave.js         # Leave voice channel
+│   │   │   ├── queue.js         # Interactive queue view
+│   │   │   └── twentyFourSeven.js # 24/7 mode toggle
+│   │   └── utility/             # General utility commands
+│   │       ├── help.js          # Interactive help page
+│   │       └── ping.js          # Ping latency check
+│   ├── services/                # Core business logic layer
+│   │   └── music/
+│   │       ├── playerManager.js # Manages music player instances across guilds
+│   │       ├── musicPlayer.js   # Handles player state, queues, voice connections
+│   │       └── trackResolver.js # Resolves URLs & searches YouTube/Spotify
+│   ├── events/                  # Event listeners mapped by category
 │   │   ├── client/
-│   │   │   └── ready.js       # Fires when bot successfully connects
+│   │   │   └── ready.js         # Ready event (Status & Activity)
 │   │   └── interaction/
-│   │       └── messageCreate.js  # Handles incoming messages & command routing
-│   │
-│   ├── handlers/              # Auto-loaders for commands and events
-│   │   ├── commandHandler.js  # Scans & registers all command files
-│   │   └── eventHandler.js    # Scans & registers all event files
-│   │
-│   ├── config/                # Configuration & environment variables
-│   │   └── index.js           # Loads, validates, and exports config
-│   │
-│   ├── utils/                 # Shared utilities
-│   │   └── logger.js          # Color-coded console logger
-│   │
-│   └── index.js               # Entry point — initializes client & starts bot
-│
-├── .env.example               # Template for environment variables
-├── .gitignore
-├── package.json
-└── README.md
+│   │       ├── interactionCreate.js # Interactive button clicks
+│   │       └── messageCreate.js # Prefix command parsing
+│   ├── handlers/                # Dynamic loaders
+│   │   ├── commandHandler.js    # Registers commands & nested subcommands
+│   │   └── eventHandler.js      # Registers events dynamically
+│   ├── config/                  # Configuration loaders
+│   │   └── index.js             # Parses, validates, and freezes config variables
+│   └── utils/                   # Shared helper utilities
+│       ├── formatters.js        # String and duration formatters
+│       └── logger.js            # Chalk-like colored console logs
+├── .env.example                 # Environment configuration template
+├── .gitignore                   # Version control exclusions
+├── package.json                 # Project dependencies & scripts
+└── README.md                    # Documentation
 ```
 
 ---
 
-## 🧩 Adding a New Command
+## 🧩 Extension Guide
 
-1. Create a new `.js` file inside `src/commands/<category>/`:
-
-```js
+### Adding a New Command
+To add a new command, simply create a `.js` file inside `src/commands/<category>/`:
+```javascript
 const name = "hello";
-const description = "Replies with a greeting";
+const description = "Replies with a friendly greeting";
 
 const execute = async (message, args) => {
     await message.reply("👋 Hello!");
@@ -120,29 +157,46 @@ const execute = async (message, args) => {
 
 export default { name, description, execute };
 ```
+The command loader will register it automatically on the next startup.
 
-2. The command handler will automatically pick it up on the next restart — no registration needed.
+### Adding a Subcommand
+If you want to group subcommands together (similar to `bm!music <subcommand>`), place the file in the group folder (e.g. `src/commands/music/`) and export `subcommand: true`:
+```javascript
+const name = "volume";
+const description = "Adjusts playback volume";
+const subcommand = true;
 
----
+const execute = async (message, args) => {
+    // Volume adjustments logic here
+};
 
-## 🧩 Adding a New Event
+export default { name, description, subcommand, execute };
+```
 
-1. Create a new `.js` file inside `src/events/<category>/`:
+### Adding a New Event
+Create a `.js` file inside `src/events/<category>/`:
+```javascript
+const name = "guildMemberAdd";
 
-```js
-const name = "guildCreate";
-
-const execute = async (guild) => {
-    console.log(`Joined new server: ${guild.name}`);
+const execute = async (member) => {
+    console.log(`${member.user.tag} joined the server.`);
 };
 
 export default { name, execute };
 ```
+Add `once: true` to the export if the event should only run once (like `ready`).
 
-2. Add `once: true` to the export if the event should only fire once.
+---
+
+## 🚀 Deployment (e.g., Railway)
+
+This repository is optimized for quick hosting providers like [Railway](https://railway.app):
+1. Create a new project on Railway and connect your repository.
+2. Under Variables, add the required keys (`DISCORD_TOKEN`, `BOT_PREFIX`).
+3. Railway will auto-detect the Node.js project, install dependencies, and start the bot automatically.
 
 ---
 
 ## 📝 License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).

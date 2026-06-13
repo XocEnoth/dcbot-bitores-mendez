@@ -18,7 +18,7 @@ const execute = async (message) => {
     await command.execute(message, args);
   } catch (error) {
     logger.error(`Error executing command "${commandName}"`, error);
-    await message.reply('❌ Terjadi error saat menjalankan command ini.').catch(() => {});
+    await message.reply('❌ An error occurred while executing this command.').catch(() => {});
   }
 };
 

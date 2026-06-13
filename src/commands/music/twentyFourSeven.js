@@ -1,0 +1,50 @@
+import playerManager from '../../services/music/playerManager.js';
+
+const name = '247';
+const description = 'Toggle 24/7 mode to keep the bot in the voice channel';
+const subcommand = true;
+
+const execute = async (message, args) => {
+  const voiceChannel = message.member.voice.channel;
+  if (!voiceChannel) {
+    return message.reply('❌ You must join a voice channel first.');
+  }
+
+  const player = playerManager.getPlayer(message.guild.id);
+  if (!player || !player.connection) {
+    return message.reply('❌ The bot is not currently in a voice channel.');
+  }
+
+  if (voiceChannel.id !== player.voiceChannel?.id) {
+    return message.reply('❌ You must be in the same voice channel as the bot.');
+  }
+
+  const mode = args[0]?.toLowerCase();
+
+  if (mode === 'on') {
+    if (player.is247) {
+      return message.reply('⚠️ 24/7 mode is already enabled.');
+    }
+    player.is247 = true;
+    player._clearIdleTimeout();
+    return message.reply('🔄 24/7 mode has been **enabled**. The bot will remain in the voice channel even if the queue is empty.');
+  }
+
+  if (mode === 'off') {
+    if (!player.is247) {
+      return message.reply('⚠️ 24/7 mode is already disabled.');
+    }
+    player.is247 = false;
+    if (!player.isPlaying) {
+      player._startIdleTimeout();
+    }
+    return message.reply('🔄 24/7 mode has been **disabled**. The bot will leave the voice channel when the queue is empty.');
+  }
+
+  const status = player.is247 ? '**Enabled** ✅' : '**Disabled** ❌';
+  await message.reply(
+    `🔄 24/7 mode status: ${status}\nUse \`bm!music 247 on\` or \`bm!music 247 off\` to change it.`,
+  );
+};
+
+export default { name, description, subcommand, execute };
