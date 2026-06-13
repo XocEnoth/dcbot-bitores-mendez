@@ -12,7 +12,7 @@ const subcommand = true;
 const execute = async (message, args) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
-    return message.reply('❌ You must join a voice channel first.');
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must join a voice channel first.')] });
   }
 
   let page = 1;
@@ -23,18 +23,18 @@ const execute = async (message, args) => {
 
   const query = args.join(' ');
   if (!query) {
-    return message.reply(`❌ Please enter a search query or URL.\nExample: \`${config.prefix}music play never gonna give you up\` or \`${config.prefix}music play <playlist_url> 2\``);
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Please enter a search query or URL.\nExample: \`${config.prefix}music play never gonna give you up\` or \`${config.prefix}music play <playlist_url> 2\``)] });
   }
 
   const permissions = voiceChannel.permissionsFor(message.client.user);
   if (!permissions.has('Connect') || !permissions.has('Speak')) {
-    return message.reply('❌ The bot does not have permission to join or speak in this voice channel.');
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ The bot does not have permission to join or speak in this voice channel.')] });
   }
 
   const player = playerManager.getOrCreatePlayer(message.guild.id);
 
   if (player.voiceChannel && player.voiceChannel.id !== voiceChannel.id) {
-    return message.reply('❌ The bot is currently being used in another voice channel.');
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ The bot is currently being used in another voice channel.')] });
   }
 
   if (!player.connection) {
@@ -42,17 +42,17 @@ const execute = async (message, args) => {
       await player.connect(voiceChannel, message.channel);
     } catch (error) {
       playerManager.destroyPlayer(message.guild.id);
-      return message.reply(`❌ ${error.message}`);
+      return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ ${error.message}`)] });
     }
   }
 
-  const loadingMsg = await message.reply('🔍 Searching...');
+  const loadingMsg = await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔍 Searching...')] });
 
   try {
     const tracks = await trackResolver.resolve(query, page);
 
     if (tracks.length === 0) {
-      return loadingMsg.edit('❌ No results found for that search query.');
+      return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No results found for that search query.')] });
     }
 
     await player.addTracks(tracks);
@@ -80,8 +80,14 @@ const execute = async (message, args) => {
       await loadingMsg.edit({ content: null, embeds: [embed] });
     }
   } catch (error) {
-    logger.error('Error resolving track', error);
-    await loadingMsg.edit(`❌ ${error.message || 'An error occurred while searching for the track.'}`);
+    const errorMsg = error.message || 'An error occurred while searching for the track.';
+    
+    // Task 3: Handle specific Spotify error to not log to CMD
+    if (!errorMsg.includes('Spotify limits public playlist scraping')) {
+      logger.error('Error resolving track', error);
+    }
+    
+    await loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ ${errorMsg}`)] });
   }
 };
 

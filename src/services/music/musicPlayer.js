@@ -160,7 +160,7 @@ class MusicPlayer {
     } catch (error) {
       logger.error(`Failed to play: ${track.title}`, error);
       await this.textChannel
-        ?.send(`❌ Failed to play **${truncate(track.title, 50)}**. Skipping...`)
+        ?.send({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Failed to play **${truncate(track.title, 50)}**. Skipping...`)] })
         .catch(() => {});
       await this.playNext();
     }
@@ -202,6 +202,26 @@ class MusicPlayer {
     if (!this.is247) {
       this._startIdleTimeout();
     }
+  }
+
+  shuffle() {
+    if (this.queue.length <= this.currentIndex + 2) return false;
+    
+    // Extract upcoming tracks
+    const upcoming = this.queue.slice(this.currentIndex + 1);
+    
+    // Fisher-Yates shuffle
+    for (let i = upcoming.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
+    }
+    
+    // Re-assemble queue
+    this.queue = [
+      ...this.queue.slice(0, this.currentIndex + 1),
+      ...upcoming
+    ];
+    return true;
   }
 
   get currentTrack() {
@@ -264,6 +284,10 @@ class MusicPlayer {
         .setLabel('Play/Pause')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
+        .setCustomId('music_shuffle')
+        .setLabel('Shuffle')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
         .setCustomId('music_skip')
         .setLabel('Skip')
         .setStyle(ButtonStyle.Secondary),
@@ -308,7 +332,7 @@ class MusicPlayer {
     this.idleTimeout = setTimeout(() => {
       if (!this.isPlaying && !this.is247) {
         this.textChannel
-          ?.send('👋 No track is being played. The bot has left the voice channel.')
+          ?.send({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('👋 No track is being played. The bot has left the voice channel.')] })
           .catch(() => {});
         this.destroy();
       }

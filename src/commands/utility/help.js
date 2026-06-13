@@ -68,7 +68,7 @@ const execute = async (message) => {
                 },
                 {
                     name: "Music",
-                    value: `\`${config.prefix}music play <query/url> [page]\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music 247 [on/off]\`\nToggle 24/7 mode.`,
+                    value: `\`${config.prefix}music play <query/url> [page]\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music shuffle\`\nShuffle the upcoming tracks in the queue.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music join\`\nJoin the voice channel without playing anything.\n\n\`${config.prefix}music 247 [on/off]\`\nToggle 24/7 mode.`,
                     inline: false,
                 },
             )
@@ -124,7 +124,7 @@ const execute = async (message) => {
             // Protection: Only the command author can click the buttons
             if (interaction.user.id !== message.author.id) {
                 await interaction.reply({
-                    content: "❌ You cannot use someone else's help menu.",
+                    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription("❌ You cannot use someone else's help menu.")],
                     flags: MessageFlags.Ephemeral,
                 });
                 return;
@@ -150,7 +150,7 @@ const execute = async (message) => {
                     const inviteLink = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&scope=bot`;
 
                     await interaction.reply({
-                        content: `🔗 **Use the following link to invite ${client.user.username}:**\n${inviteLink}`,
+                        embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔗 **Use the following link to invite ${client.user.username}:**\n${inviteLink}`)],
                         flags: MessageFlags.Ephemeral, // Only visible to the user who clicked
                     });
                 }
@@ -177,7 +177,7 @@ const execute = async (message) => {
     } catch (error) {
         logger.error("Error sending help command", error);
         await message
-            .reply("❌ An error occurred while loading the help menu.")
+            .reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription("❌ An error occurred while loading the help menu.")] })
             .catch(() => {});
     }
 };

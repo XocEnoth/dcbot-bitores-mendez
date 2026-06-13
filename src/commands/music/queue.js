@@ -21,33 +21,8 @@ const execute = async (message) => {
     components: totalPages > 1 ? [buildQueueButtons(player, currentPage)] : [],
   });
 
-  if (totalPages <= 1) return;
-
-  const collector = reply.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 120_000,
-  });
-
-  collector.on('collect', async (interaction) => {
-    if (interaction.user.id !== message.author.id) {
-      return interaction.reply({
-        content: '❌ Only the command author can use this navigation.',
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    if (interaction.customId.startsWith('music_queuepage_')) {
-      currentPage = parseInt(interaction.customId.split('_')[2], 10);
-      await interaction.update({
-        embeds: [buildQueueEmbed(player, currentPage)],
-        components: [buildQueueButtons(player, currentPage)],
-      });
-    }
-  });
-
-  collector.on('end', async () => {
-    await reply.edit({ components: [] }).catch(() => {});
-  });
+  // The interaction collector has been removed because music_queuepage_ is handled globally
+  // by interactionCreate.js. This prevents the 'Interaction has already been acknowledged' bug.
 };
 
 export default { name, description, subcommand, execute };

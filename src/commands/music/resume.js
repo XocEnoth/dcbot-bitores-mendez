@@ -1,30 +1,31 @@
 import playerManager from '../../services/music/playerManager.js';
+import { EmbedBuilder } from 'discord.js';
+import config from '../../config/index.js';
 
 const name = 'resume';
-const description = 'Resume the paused track';
+const description = 'Resume the paused playback';
 const subcommand = true;
 
 const execute = async (message) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
-    return message.reply('❌ You must join a voice channel first.');
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must join a voice channel first.')] });
   }
 
   const player = playerManager.getPlayer(message.guild.id);
-  if (!player) {
-    return message.reply('❌ No track is currently playing.');
+  if (!player || (!player.isPlaying && !player.isPaused)) {
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No track is currently playing.')] });
   }
 
   if (voiceChannel.id !== player.voiceChannel?.id) {
-    return message.reply('❌ You must be in the same voice channel as the bot.');
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  if (!player.isPaused) {
-    return message.reply('⚠️ The track is not paused.');
+  if (player.resume()) {
+    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('▶ Playback resumed.')] });
+  } else {
+    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ The player is not paused.')] });
   }
-
-  player.resume();
-  await message.reply('▶ Playback resumed.');
 };
 
 export default { name, description, subcommand, execute };

@@ -92,7 +92,9 @@ npm start
 | `bm!music skip`  | None | Skips the current playing song. |
 | `bm!music stop`  | None | Stops playback, clears the queue, and resets the player status. |
 | `bm!music leave` | None | Disconnects the bot from the voice channel and cleans up resources. |
+| `bm!music join`  | None | Joins the voice channel without playing any tracks immediately. |
 | `bm!music queue` | None | Displays the current music queue with interactive pagination buttons. |
+| `bm!music shuffle`| None | Shuffles the upcoming tracks in the queue. |
 | `bm!music 247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
 
 ---

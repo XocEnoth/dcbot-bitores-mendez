@@ -35,13 +35,23 @@ export const buildQueueButtons = (player, page) => {
   
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`music_queuepage_${page - 1}`)
+      .setCustomId('music_queuepage_0_first')
+      .setEmoji('⏪')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page <= 0),
+    new ButtonBuilder()
+      .setCustomId(`music_queuepage_${page - 1}_prev`)
       .setEmoji('⬅️')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page <= 0),
     new ButtonBuilder()
-      .setCustomId(`music_queuepage_${page + 1}`)
+      .setCustomId(`music_queuepage_${page + 1}_next`)
       .setEmoji('➡️')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page >= totalPages - 1),
+    new ButtonBuilder()
+      .setCustomId(`music_queuepage_${totalPages - 1}_last`)
+      .setEmoji('⏩')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page >= totalPages - 1),
   );

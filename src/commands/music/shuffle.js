@@ -2,8 +2,8 @@ import playerManager from '../../services/music/playerManager.js';
 import { EmbedBuilder } from 'discord.js';
 import config from '../../config/index.js';
 
-const name = 'pause';
-const description = 'Pause the current playback';
+const name = 'shuffle';
+const description = 'Shuffle the upcoming tracks in the queue';
 const subcommand = true;
 
 const execute = async (message) => {
@@ -13,18 +13,18 @@ const execute = async (message) => {
   }
 
   const player = playerManager.getPlayer(message.guild.id);
-  if (!player || !player.isPlaying) {
-    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No track is currently playing.')] });
+  if (!player || player.queue.length <= player.currentIndex + 1) {
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ Not enough upcoming tracks in the queue to shuffle.')] });
   }
 
   if (voiceChannel.id !== player.voiceChannel?.id) {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  if (player.pause()) {
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⏸ Playback paused.')] });
+  if (player.shuffle()) {
+    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔀 The queue has been shuffled.')] });
   } else {
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ The player is already paused.')] });
+    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Not enough upcoming tracks to shuffle.')] });
   }
 };
 
