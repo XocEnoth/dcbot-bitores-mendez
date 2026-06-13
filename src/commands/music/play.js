@@ -82,8 +82,11 @@ const execute = async (message, args) => {
   } catch (error) {
     const errorMsg = error.message || 'An error occurred while searching for the track.';
     
-    // Task 3: Handle specific Spotify error to not log to CMD
-    if (!errorMsg.includes('Spotify limits public playlist scraping')) {
+    // Handle specific limits and user errors to not log to CMD
+    if (!errorMsg.includes('Spotify limits public playlist scraping') &&
+        !errorMsg.includes('This YouTube playlist contains hidden/unavailable videos') &&
+        !errorMsg.includes('without a YOUTUBE_API_KEY') &&
+        !errorMsg.includes('is empty. The playlist only has')) {
       logger.error('Error resolving track', error);
     }
     
