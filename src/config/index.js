@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-const REQUIRED_ENV_VARS = ['DISCORD_TOKEN'];
+const REQUIRED_ENV_VARS = ['DISCORD_TOKEN', 'GEMINI_API_KEY'];
 
 /**
  * Validates that all required environment variables are set.
@@ -29,6 +29,10 @@ const config = Object.freeze({
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET || null,
   }),
   youtubeApiKey: process.env.YOUTUBE_API_KEY || null,
+  gemini: Object.freeze({
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
+  }),
 });
 
 export default config;

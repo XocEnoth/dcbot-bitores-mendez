@@ -58,6 +58,7 @@ BOT_PREFIX=bm!
 ```
 
 *Optional Configuration:*
+- **Google Gemini API Key (`GEMINI_API_KEY`)**: Required if you want to use the AI `chat` command. Get it from [Google AI Studio](https://aistudio.google.com/). You can also specify the model using `GEMINI_MODEL` (defaults to `gemini-3.1-flash-lite`).
 - **YouTube API Key (`YOUTUBE_API_KEY`)**: Highly recommended if you intend to play massive YouTube playlists (e.g., 500+ songs). Without it, the bot will use a scraping fallback that is strictly capped by YouTube at 200 items per playlist due to "Unavailable videos are hidden" UI errors. Get this key for free from the Google Cloud Console.
 - **Spotify Credentials (`SPOTIFY_CLIENT_ID` & `SPOTIFY_CLIENT_SECRET`)**: No longer required. The bot utilizes an advanced public scraper fallback to fetch Spotify track metadata directly without a developer key.
 
@@ -84,6 +85,7 @@ npm start
 | :--- | :--- | :--- |
 | `bm!ping` | None | Measures and displays bot latency and Discord API latency. |
 | `bm!help` | None | Shows an interactive statistics page and command list with navigation buttons. |
+| `bm!chat` | `<prompt>` | Chat with the BM AI Assistant (powered by Google Gemini API). Includes rate limiting and pagination. |
 
 ### Music Commands
 | Command | Arguments | Description |
@@ -118,9 +120,11 @@ dcbot-bitores-mendez/
 │   │   │   ├── queue.js         # Interactive queue view
 │   │   │   └── twentyFourSeven.js # 24/7 mode toggle
 │   │   └── utility/             # General utility commands
+│   │       ├── chat.js          # AI Chat command
 │   │       ├── help.js          # Interactive help page
 │   │       └── ping.js          # Ping latency check
 │   ├── services/                # Core business logic layer
+│   │   ├── gemini.service.js    # Google Gemini API integration
 │   │   └── music/
 │   │       ├── playerManager.js # Manages music player instances across guilds
 │   │       ├── musicPlayer.js   # Handles player state, queues, voice connections
@@ -138,7 +142,8 @@ dcbot-bitores-mendez/
 │   │   └── index.js             # Parses, validates, and freezes config variables
 │   └── utils/                   # Shared helper utilities
 │       ├── formatters.js        # String and duration formatters
-│       └── logger.js            # Chalk-like colored console logs
+│       ├── logger.js            # Chalk-like colored console logs
+│       └── rateLimiter.js       # In-memory rate limiting logic
 ├── .env.example                 # Environment configuration template
 ├── .gitignore                   # Version control exclusions
 ├── package.json                 # Project dependencies & scripts
@@ -197,7 +202,7 @@ Add `once: true` to the export if the event should only run once (like `ready`).
 This repository is heavily optimized for quick deployment to hosting providers like [Railway](https://railway.app) using **Nixpacks**:
 1. Create a new project on Railway and connect your repository.
 2. In your Railway project settings, ensure the **Builder** is set to **Nixpacks** (this is usually the default). Nixpacks will automatically read the `nixpacks.toml` file to install Node 22, Python 3, and FFmpeg.
-3. Under Variables, add the required keys (`DISCORD_TOKEN`, `BOT_PREFIX`, `YOUTUBE_API_KEY`).
+3. Under Variables, add the required keys (`DISCORD_TOKEN`, `BOT_PREFIX`, `GEMINI_API_KEY`, etc.).
 4. Railway will auto-detect everything, install dependencies, and start the bot automatically.
 
 ---

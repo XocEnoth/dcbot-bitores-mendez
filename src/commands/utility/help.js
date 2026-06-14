@@ -63,7 +63,7 @@ const execute = async (message) => {
             .addFields(
                 {
                     name: "Utility",
-                    value: `\`${config.prefix}ping\`\nDisplay bot and API latency.\n\n\`${config.prefix}help\`\nDisplay this help menu.`,
+                    value: `\`${config.prefix}ping\`\nDisplay bot and API latency.\n\n\`${config.prefix}help\`\nDisplay this help menu.\n\n\`${config.prefix}chat <prompt>\`\nChat with the BM AI Assistant.`,
                     inline: false,
                 },
                 {
