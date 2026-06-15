@@ -141,7 +141,7 @@ class MusicPlayer {
         geoBypass: true,
         noWarnings: true,
         rmCacheDir: true,
-        extractorArgs: 'youtube:player_client=android_vr,tv,ios',
+        extractorArgs: 'youtube:player_client=android,ios;player_skip=webpage,configs,js',
       });
 
       this._currentProcess = subprocess;
