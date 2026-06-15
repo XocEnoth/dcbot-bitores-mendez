@@ -140,7 +140,8 @@ class MusicPlayer {
         forceIpv4: true,
         geoBypass: true,
         noWarnings: true,
-        extractorArgs: 'youtube:player_client=ios,android',
+        rmCacheDir: true,
+        extractorArgs: 'youtube:player_client=android_vr,tv,ios',
       });
 
       this._currentProcess = subprocess;
