@@ -418,29 +418,30 @@ const resolve = async (query, page = 1) => {
 
     // YouTube playlist URL
     if (validated === "yt_playlist") {
-        if (config.youtubeApiKey) {
-            const match = query.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-            if (match) {
-                try {
-                    return await resolveYouTubePlaylistApi(match[1], page);
-                } catch (error) {
-                    if (
-                        error.message.includes(
-                            "is empty. The playlist only has",
-                        )
-                    ) {
-                        throw error;
-                    }
-                    logger.warn(
-                        `YouTube API failed for playlist ${match[1]}: ${error.message}. Falling back to play-dl...`,
-                    );
+        const match = query.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+        const listId = match ? match[1] : null;
+        const isMix = listId && listId.startsWith("RD");
+
+        if (config.youtubeApiKey && !isMix && listId) {
+            try {
+                return await resolveYouTubePlaylistApi(listId, page);
+            } catch (error) {
+                if (
+                    error.message.includes(
+                        "is empty. The playlist only has",
+                    )
+                ) {
+                    throw error;
                 }
+                logger.warn(
+                    `YouTube API failed for playlist ${listId}: ${error.message}. Falling back to play-dl...`,
+                );
             }
         }
 
         let playlist;
         try {
-            playlist = await play.playlist_info(query, { incomplete: false });
+            playlist = await play.playlist_info(query, { incomplete: isMix });
         } catch (error) {
             if (!config.youtubeApiKey) {
                 throw new Error(

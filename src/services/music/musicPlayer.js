@@ -126,6 +126,8 @@ class MusicPlayer {
   }
 
   async playNext() {
+    if (this.destroyed) return;
+
     this._killProcess();
     this._clearIdleTimeout();
     this.currentIndex++;

@@ -36,7 +36,14 @@ const execute = async (message, args) => {
 
     try {
         // 4. Generate Response
+        const startTime = Date.now();
         const aiResponse = await generateChatResponse(prompt);
+        
+        // Prevent Discord edit race condition if response was generated too quickly
+        const timeTaken = Date.now() - startTime;
+        if (timeTaken < 1000) {
+            await new Promise(r => setTimeout(r, 1000 - timeTaken));
+        }
 
         // 5. Response Splitting (Discord Embed Description Limit is 4096)
         const text = aiResponse.text;

@@ -21,6 +21,9 @@ const execute = async (message) => {
         .setTitle("🏓 Pong!")
         .setDescription(`📡 Latency: **${roundtripLatency}ms**\n💻 API Latency: **${apiLatency}ms**`);
 
+    // Guaranteed 1-second delay to completely prevent Discord's visual caching bug
+    await new Promise(r => setTimeout(r, 1000));
+
     await reply.edit({ embeds: [embedFinal] });
 };
 
