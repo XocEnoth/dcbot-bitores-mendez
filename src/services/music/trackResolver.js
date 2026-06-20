@@ -443,6 +443,17 @@ const resolve = async (query, page = 1) => {
         try {
             playlist = await play.playlist_info(query, { incomplete: isMix });
         } catch (error) {
+            // Fallback for YouTube Mix playlists when play-dl fails to parse the new YouTube UI
+            if (isMix && (error.message.includes('browseId') || error.message.includes('unviewable'))) {
+                logger.warn(`play-dl failed to parse Mix playlist ${listId}, falling back to single video extraction.`);
+                try {
+                    const info = await play.video_info(query);
+                    return [extractTrackInfo(info.video_details)];
+                } catch (fallbackError) {
+                    logger.error(`Fallback video extraction failed for Mix ${listId}:`, fallbackError);
+                }
+            }
+
             if (!config.youtubeApiKey) {
                 throw new Error(
                     "Currently, the bot only supports standard public YouTube playlists. YouTube Music links and playlists containing hidden, private, or unavailable videos are restricted. Please contact the bot developer to unlock full playlist support.",
