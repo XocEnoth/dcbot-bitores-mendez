@@ -114,6 +114,17 @@ class MusicPlayer {
     }
   }
 
+  async insertTracks(tracks) {
+    // Insert right after the current track so it plays next
+    const insertPos = this.currentIndex + 1;
+    this.queue.splice(insertPos, 0, ...tracks);
+
+    if (!this.isPlaying) {
+      this.currentIndex = insertPos - 1;
+      await this.playNext();
+    }
+  }
+
   async playNext() {
     this._killProcess();
     this._clearIdleTimeout();
