@@ -16,9 +16,15 @@ const execute = async (message, args) => {
   }
 
   let page = 1;
-  if (args.length > 1 && !isNaN(args[args.length - 1])) {
-    page = parseInt(args.pop(), 10);
-    if (page < 1) page = 1;
+  if (args.length > 1) {
+    const lastArg = args[args.length - 1].toLowerCase();
+    if (lastArg === 'all') {
+      page = 'all';
+      args.pop();
+    } else if (!isNaN(lastArg)) {
+      page = parseInt(args.pop(), 10);
+      if (page < 1) page = 1;
+    }
   }
 
   const query = args.join(' ');

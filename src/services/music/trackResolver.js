@@ -280,18 +280,24 @@ const resolveSpotifyCollection = async (url, parsed, page = 1) => {
     }
 
     const MAX = 50;
-    const startIndex = (page - 1) * MAX;
-    const limited = trackNames.slice(startIndex, startIndex + MAX);
+    let limited;
 
-    if (limited.length === 0) {
-        if (page > 2 && trackNames.length <= 100) {
+    if (page === 'all') {
+        limited = trackNames;
+    } else {
+        const startIndex = (page - 1) * MAX;
+        limited = trackNames.slice(startIndex, startIndex + MAX);
+
+        if (limited.length === 0) {
+            if (page > 2 && trackNames.length <= 100) {
+                throw new Error(
+                    "Spotify limits public playlist scraping to 100 tracks (max page 2). To play more tracks, please use a YouTube playlist instead.",
+                );
+            }
             throw new Error(
-                "Spotify limits public playlist scraping to 100 tracks (max page 2). To play more tracks, please use a YouTube playlist instead.",
+                `Page ${page} is empty. The playlist only has ${Math.ceil(trackNames.length / MAX)} page(s).`,
             );
         }
-        throw new Error(
-            `Page ${page} is empty. The playlist only has ${Math.ceil(trackNames.length / MAX)} page(s).`,
-        );
     }
 
     logger.info(
@@ -363,28 +369,38 @@ const resolveYouTubePlaylistApi = async (playlistId, page) => {
         throw new Error("Playlist is empty or all videos are private.");
 
     const MAX = 50;
-    const startIndex = (page - 1) * MAX;
-    const limited = validItems.slice(startIndex, startIndex + MAX);
+    let limited;
+    
+    if (page === 'all') {
+        limited = validItems;
+    } else {
+        const startIndex = (page - 1) * MAX;
+        limited = validItems.slice(startIndex, startIndex + MAX);
 
-    if (limited.length === 0) {
-        throw new Error(
-            `Page ${page} is empty. The playlist only has ${Math.ceil(validItems.length / MAX)} page(s).`,
-        );
+        if (limited.length === 0) {
+            throw new Error(
+                `Page ${page} is empty. The playlist only has ${Math.ceil(validItems.length / MAX)} page(s).`,
+            );
+        }
     }
 
-    const videoIds = limited
-        .map((item) => item.snippet.resourceId.videoId)
-        .join(",");
-    const vidRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${API_KEY}`,
-    );
-    if (!vidRes.ok) throw new Error("Failed to fetch video durations.");
-    const vidData = await vidRes.json();
-
     const durationMap = {};
-    if (vidData.items) {
-        for (const v of vidData.items) {
-            durationMap[v.id] = parseIsoDuration(v.contentDetails.duration);
+    
+    // Chunk video ID fetching since YouTube API limits to 50 ids per request
+    for (let i = 0; i < limited.length; i += MAX) {
+        const chunk = limited.slice(i, i + MAX);
+        const videoIds = chunk.map((item) => item.snippet.resourceId.videoId).join(",");
+        
+        const vidRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoIds}&key=${API_KEY}`,
+        );
+        if (!vidRes.ok) throw new Error("Failed to fetch video durations.");
+        const vidData = await vidRes.json();
+
+        if (vidData.items) {
+            for (const v of vidData.items) {
+                durationMap[v.id] = parseIsoDuration(v.contentDetails.duration);
+            }
         }
     }
 
@@ -473,19 +489,27 @@ const resolve = async (query, page = 1) => {
         const videos = await playlist.all_videos();
         const MAX = 50;
 
-        if (!config.youtubeApiKey && page > 4) {
+        if (!config.youtubeApiKey && page > 4 && page !== 'all') {
             throw new Error(
                 "Currently, the bot is limited to processing up to 200 tracks (4 pages) per playlist. Please contact the bot developer to unlock unlimited playlist pagination.",
             );
         }
 
-        const startIndex = (page - 1) * MAX;
-        const limited = videos.slice(startIndex, startIndex + MAX);
+        let limited;
+        if (page === 'all') {
+            limited = videos;
+            if (!config.youtubeApiKey && videos.length > 200) {
+                 limited = videos.slice(0, 200); // cap at 200 for play-dl without API key
+            }
+        } else {
+            const startIndex = (page - 1) * MAX;
+            limited = videos.slice(startIndex, startIndex + MAX);
 
-        if (limited.length === 0) {
-            throw new Error(
-                `Page ${page} is empty. The playlist only has ${Math.ceil(videos.length / MAX)} page(s).`,
-            );
+            if (limited.length === 0) {
+                throw new Error(
+                    `Page ${page} is empty. The playlist only has ${Math.ceil(videos.length / MAX)} page(s).`,
+                );
+            }
         }
 
         return limited.map(extractTrackInfo);
