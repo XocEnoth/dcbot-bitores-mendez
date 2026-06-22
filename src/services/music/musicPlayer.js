@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import {
   joinVoiceChannel,
   createAudioPlayer,
@@ -21,6 +23,22 @@ import logger from '../../utils/logger.js';
 
 const IDLE_TIMEOUT_MS = 300_000; // 5 minutes
 const CONNECTION_TIMEOUT_MS = 30_000; // 30 seconds
+
+// Resolve cookies.txt path once at startup
+const COOKIES_PATH = path.resolve(process.cwd(), 'cookies.txt');
+
+/**
+ * Check if cookies.txt exists and contains actual cookie data (not just comments).
+ */
+function hasCookies() {
+  try {
+    if (!fs.existsSync(COOKIES_PATH)) return false;
+    const content = fs.readFileSync(COOKIES_PATH, 'utf8');
+    return content.split('\n').some(line => line.trim() && !line.trim().startsWith('#'));
+  } catch {
+    return false;
+  }
+}
 
 class MusicPlayer {
   constructor(guildId) {
@@ -145,7 +163,8 @@ class MusicPlayer {
     const track = this.queue[this.currentIndex];
 
     try {
-      const subprocess = youtubeDl.exec(track.url, {
+      const useCookies = hasCookies();
+      const ytDlpOptions = {
         o: '-',
         q: '',
         f: 'bestaudio/best',
@@ -154,8 +173,19 @@ class MusicPlayer {
         geoBypass: true,
         noWarnings: true,
         rmCacheDir: true,
-        extractorArgs: 'youtube:player_client=android,ios;player_skip=webpage,configs,js',
-      });
+      };
+
+      if (useCookies) {
+        // Web client supports cookies; provide Node.js for JS signature resolution
+        ytDlpOptions.cookies = COOKIES_PATH;
+        ytDlpOptions.extractorArgs = 'youtube:player_client=web';
+        ytDlpOptions.jsRuntimes = `node:${process.execPath}`;
+      } else {
+        // Android/iOS clients don't need JS signature solving (fastest)
+        ytDlpOptions.extractorArgs = 'youtube:player_client=android,ios;player_skip=webpage,configs,js';
+      }
+
+      const subprocess = youtubeDl.exec(track.url, ytDlpOptions);
 
       this._currentProcess = subprocess;
 

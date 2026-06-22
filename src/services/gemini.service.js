@@ -59,6 +59,7 @@ Utility:
 
 Music:
 - ${config.prefix}music play <query or URL> [page] : Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists.
+- ${config.prefix}music insert <query or URL> [page] : Inserts a track/playlist to the front of the queue (plays next).
 - ${config.prefix}music pause : Pauses the current audio playback.
 - ${config.prefix}music resume : Resumes the paused audio playback.
 - ${config.prefix}music skip : Skips the current playing song.
