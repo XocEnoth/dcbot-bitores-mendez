@@ -1,4 +1,5 @@
 import playerManager from '../../services/music/playerManager.js';
+import lyricsService from '../../services/music/lyricsService.js';
 import { truncate } from '../../utils/formatters.js';
 import { buildQueueEmbed, buildQueueButtons, TRACKS_PER_PAGE } from '../../utils/queueBuilder.js';
 import { MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
@@ -7,7 +8,7 @@ import logger from '../../utils/logger.js';
 
 const name = 'interactionCreate';
 
-const MUSIC_BUTTONS = ['music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_stop_confirm', 'music_stop_cancel'];
+const MUSIC_BUTTONS = ['music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_lyrics', 'music_stop_confirm', 'music_stop_cancel'];
 
 const execute = async (interaction) => {
   if (!interaction.isButton()) return;
@@ -132,6 +133,67 @@ const execute = async (interaction) => {
           await interaction.reply({
             embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Not enough upcoming tracks to shuffle.')],
             flags: MessageFlags.Ephemeral,
+          });
+        }
+        break;
+      }
+
+      case 'music_lyrics': {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        if (!player.isPlaying || !player.currentTrack) {
+          return interaction.editReply({
+            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ There is no song currently playing.')],
+          });
+        }
+
+        try {
+          const track = player.currentTrack;
+          const result = await lyricsService.searchLyrics(track.title, track.author);
+
+          if (!result) {
+            return interaction.editReply({
+              embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No lyrics were found for the currently playing track.')],
+            });
+          }
+
+          const header = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n`;
+          const MAX_DESC = 4096;
+
+          if (header.length + result.lyrics.length <= MAX_DESC) {
+            return interaction.editReply({
+              embeds: [new EmbedBuilder()
+                .setColor(config.embedColor)
+                .setTitle('🎵 Lyrics')
+                .setDescription(header + result.lyrics)],
+            });
+          }
+
+          // Split long lyrics into multiple embeds
+          const chunks = lyricsService.splitLyrics(result.lyrics, MAX_DESC - header.length);
+
+          await interaction.editReply({
+            embeds: [new EmbedBuilder()
+              .setColor(config.embedColor)
+              .setTitle('🎵 Lyrics')
+              .setDescription(header + chunks[0])
+              .setFooter({ text: `Page 1/${chunks.length}` })],
+          });
+
+          for (let i = 1; i < chunks.length; i++) {
+            await interaction.followUp({
+              embeds: [new EmbedBuilder()
+                .setColor(config.embedColor)
+                .setTitle('🎵 Lyrics (continued)')
+                .setDescription(chunks[i])
+                .setFooter({ text: `Page ${i + 1}/${chunks.length}` })],
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+        } catch (error) {
+          logger.error('Error fetching lyrics', error);
+          return interaction.editReply({
+            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Failed to retrieve lyrics. Please try again later.')],
           });
         }
         break;

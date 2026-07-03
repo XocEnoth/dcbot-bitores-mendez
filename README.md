@@ -16,6 +16,7 @@ A modular, highly scalable Discord bot built with **discord.js v14** and modern 
   - Resolves YouTube videos, playlists, and search queries.
   - Automatically parses Spotify tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Spotify Developer API credentials required!).
 - **Interactive Controls**: Beautiful, rich embeds with live-updating buttons for real-time player control.
+- **Lyrics Display**: Click the "Show Lyrics" button on the Now Playing message to view lyrics for the current track, powered by [lrclib.net](https://lrclib.net).
 - **Color-Coded Logging**: Clean, formatted console logging for ease of debugging and server health monitoring.
 
 ---
@@ -135,7 +136,8 @@ dcbot-bitores-mendez/
 │   │   └── music/
 │   │       ├── playerManager.js # Manages music player instances across guilds
 │   │       ├── musicPlayer.js   # Handles player state, queues, voice connections
-│   │       └── trackResolver.js # Resolves URLs & searches YouTube/Spotify
+│   │       ├── trackResolver.js # Resolves URLs & searches YouTube/Spotify
+│   │       └── lyricsService.js # Fetches lyrics from lrclib.net
 │   ├── events/                  # Event listeners mapped by category
 │   │   ├── client/
 │   │   │   └── ready.js         # Ready event (Status & Activity)

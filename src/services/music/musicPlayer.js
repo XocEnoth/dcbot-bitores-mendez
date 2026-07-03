@@ -361,6 +361,13 @@ class MusicPlayer {
         .setStyle(ButtonStyle.Secondary),
     );
 
+    const row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('music_lyrics')
+        .setLabel('Show Lyrics')
+        .setStyle(ButtonStyle.Secondary),
+    );
+
     // Delete old now playing message
     try {
       await this.nowPlayingMessage?.delete().catch(() => {});
@@ -371,7 +378,7 @@ class MusicPlayer {
     try {
       this.nowPlayingMessage = await this.textChannel.send({
         embeds: [embed],
-        components: [row],
+        components: [row, row2],
       });
     } catch (error) {
       logger.error('Failed to send now playing message', error);
