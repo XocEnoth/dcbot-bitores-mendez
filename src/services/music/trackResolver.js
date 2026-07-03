@@ -1,6 +1,72 @@
 import play from "play-dl";
+import youtubeDl from "youtube-dl-exec";
+import fs from "fs";
+import path from "path";
 import logger from "../../utils/logger.js";
 import config from "../../config/index.js";
+
+// --- yt-dlp fallback helpers (uses cookies when available) ---
+
+const COOKIES_PATH = path.resolve(process.cwd(), 'cookies.txt');
+
+function hasCookies() {
+    try {
+        if (!fs.existsSync(COOKIES_PATH)) return false;
+        const content = fs.readFileSync(COOKIES_PATH, 'utf8');
+        return content.split('\n').some(line => line.trim() && !line.trim().startsWith('#'));
+    } catch {
+        return false;
+    }
+}
+
+function getYtDlpBaseOptions() {
+    const opts = {
+        dumpSingleJson: true,
+        noWarnings: true,
+        skipDownload: true,
+        preferFreeFormats: true,
+    };
+    if (hasCookies()) {
+        opts.cookies = COOKIES_PATH;
+    }
+    return opts;
+}
+
+const formatSecondsRaw = (seconds) => {
+    const s = Math.floor(seconds);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0)
+        return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+};
+
+const ytDlpVideoInfo = async (url) => {
+    logger.info(`Falling back to yt-dlp for video info: ${url}`);
+    const info = await youtubeDl(url, getYtDlpBaseOptions());
+    return {
+        title: info.title || 'Unknown Title',
+        author: info.uploader || info.channel || 'Unknown Artist',
+        url: info.webpage_url || url,
+        duration: (info.duration || 0) * 1000,
+        durationRaw: formatSecondsRaw(info.duration || 0),
+        thumbnail: info.thumbnail || null,
+    };
+};
+
+const ytDlpSearch = async (query) => {
+    logger.info(`Falling back to yt-dlp for search: ${query}`);
+    const info = await youtubeDl(`ytsearch:${query}`, getYtDlpBaseOptions());
+    return {
+        title: info.title || 'Unknown Title',
+        author: info.uploader || info.channel || 'Unknown Artist',
+        url: info.webpage_url || `https://www.youtube.com/watch?v=${info.id}`,
+        duration: (info.duration || 0) * 1000,
+        durationRaw: formatSecondsRaw(info.duration || 0),
+        thumbnail: info.thumbnail || null,
+    };
+};
 
 // --- YouTube helpers ---
 
@@ -428,8 +494,14 @@ const resolve = async (query, page = 1) => {
 
     // YouTube video URL
     if (validated === "yt_video") {
-        const info = await play.video_info(query);
-        return [extractTrackInfo(info.video_details)];
+        try {
+            const info = await play.video_info(query);
+            return [extractTrackInfo(info.video_details)];
+        } catch (error) {
+            logger.warn(`play-dl video_info failed: ${error.message}. Trying yt-dlp...`);
+            const track = await ytDlpVideoInfo(query);
+            return [track];
+        }
     }
 
     // YouTube playlist URL
@@ -465,8 +537,13 @@ const resolve = async (query, page = 1) => {
                 try {
                     const info = await play.video_info(query);
                     return [extractTrackInfo(info.video_details)];
-                } catch (fallbackError) {
-                    logger.error(`Fallback video extraction failed for Mix ${listId}:`, fallbackError);
+                } catch {
+                    try {
+                        const track = await ytDlpVideoInfo(query);
+                        return [track];
+                    } catch (ytDlpError) {
+                        logger.error(`yt-dlp fallback also failed for Mix ${listId}:`, ytDlpError);
+                    }
                 }
             }
 
@@ -530,9 +607,15 @@ const resolve = async (query, page = 1) => {
     }
 
     // Default: YouTube search
-    const results = await play.search(query, { limit: 1 });
-    if (results.length === 0) return [];
-    return [extractTrackInfo(results[0])];
+    try {
+        const results = await play.search(query, { limit: 1 });
+        if (results.length === 0) return [];
+        return [extractTrackInfo(results[0])];
+    } catch (error) {
+        logger.warn(`play-dl search failed: ${error.message}. Trying yt-dlp...`);
+        const track = await ytDlpSearch(query);
+        return [track];
+    }
 };
 
 export default { resolve };
