@@ -344,6 +344,14 @@ class MusicPlayer {
         .setLabel('Play/Pause')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
+        .setCustomId('music_shuffle')
+        .setLabel('Shuffle')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('music_repeat')
+        .setLabel('Repeat')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
         .setCustomId('music_skip')
         .setLabel('Skip')
         .setStyle(ButtonStyle.Secondary),
@@ -355,16 +363,12 @@ class MusicPlayer {
 
     const row2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('music_shuffle')
-        .setLabel('Shuffle')
+        .setCustomId('music_lyrics')
+        .setLabel('Show Lyrics')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('music_queue')
-        .setLabel('Queue')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_lyrics')
-        .setLabel('Show Lyrics')
+        .setLabel('Show Queue')
         .setStyle(ButtonStyle.Secondary),
     );
 

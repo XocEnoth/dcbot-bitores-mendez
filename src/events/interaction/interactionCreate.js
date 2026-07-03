@@ -8,7 +8,7 @@ import logger from '../../utils/logger.js';
 
 const name = 'interactionCreate';
 
-const MUSIC_BUTTONS = ['music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_lyrics', 'music_stop_confirm', 'music_stop_cancel'];
+const MUSIC_BUTTONS = ['music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_repeat', 'music_lyrics', 'music_stop_confirm', 'music_stop_cancel'];
 
 const execute = async (interaction) => {
   if (!interaction.isButton()) return;
@@ -135,6 +135,16 @@ const execute = async (interaction) => {
             flags: MessageFlags.Ephemeral,
           });
         }
+        break;
+      }
+
+      case 'music_repeat': {
+        player.isRepeat = !player.isRepeat;
+        const status = player.isRepeat ? '**Enabled** 🔁' : '**Disabled** ❌';
+        await interaction.reply({
+          embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔁 Repeat mode status: ${status}`)],
+          flags: MessageFlags.Ephemeral,
+        });
         break;
       }
 
