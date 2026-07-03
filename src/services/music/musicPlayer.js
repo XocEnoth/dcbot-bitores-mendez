@@ -344,10 +344,6 @@ class MusicPlayer {
         .setLabel('Play/Pause')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('music_shuffle')
-        .setLabel('Shuffle')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
         .setCustomId('music_skip')
         .setLabel('Skip')
         .setStyle(ButtonStyle.Secondary),
@@ -355,13 +351,17 @@ class MusicPlayer {
         .setCustomId('music_stop')
         .setLabel('Stop')
         .setStyle(ButtonStyle.Danger),
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('music_shuffle')
+        .setLabel('Shuffle')
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('music_queue')
         .setLabel('Queue')
         .setStyle(ButtonStyle.Secondary),
-    );
-
-    const row2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('music_lyrics')
         .setLabel('Show Lyrics')
