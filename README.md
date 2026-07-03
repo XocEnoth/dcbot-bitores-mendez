@@ -101,6 +101,7 @@ npm start
 | `bm!music join`  | None | Joins the voice channel without playing any tracks immediately. |
 | `bm!music queue` | None | Displays the current music queue with interactive pagination buttons. |
 | `bm!music shuffle`| None | Shuffles the upcoming tracks in the queue. |
+| `bm!music repeat` | `[on / off]` | Toggles repeat mode for the current track. When enabled, the track will loop until repeat is turned off. |
 | `bm!music 247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
 
 ---
@@ -119,6 +120,7 @@ dcbot-bitores-mendez/
 │   │   │   ├── pause.js         # Pause audio
 │   │   │   ├── play.js          # Play song/playlist
 │   │   │   ├── queue.js         # Interactive queue view
+│   │   │   ├── repeat.js        # Repeat mode toggle
 │   │   │   ├── resume.js        # Resume audio
 │   │   │   ├── shuffle.js       # Shuffle upcoming queue
 │   │   │   ├── skip.js          # Skip current song

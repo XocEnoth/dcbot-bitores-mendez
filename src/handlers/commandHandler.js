@@ -1,7 +1,8 @@
-import { Collection } from 'discord.js';
+import { Collection, EmbedBuilder } from 'discord.js';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
 import { pathToFileURL } from 'url';
+import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
 const COMMANDS_DIR = join(import.meta.dirname, '..', 'commands');
@@ -48,12 +49,12 @@ const loadCommands = async (client) => {
           const subName = args.shift()?.toLowerCase();
 
           if (!subName) {
-            return message.reply(`❌ Subcommand is required. Available: ${subNames}`);
+            return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Subcommand is required. Available: ${subNames}`)] });
           }
 
           const sub = subcommands.get(subName);
           if (!sub) {
-            return message.reply(`❌ Subcommand "${subName}" not found. Available: ${subNames}`);
+            return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Subcommand "${subName}" not found. Available: ${subNames}`)] });
           }
 
           await sub.execute(message, args);

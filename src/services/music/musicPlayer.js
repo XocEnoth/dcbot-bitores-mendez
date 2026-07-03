@@ -52,6 +52,7 @@ class MusicPlayer {
     this.isPlaying = false;
     this.isPaused = false;
     this.is247 = false;
+    this.isRepeat = false;
     this.nowPlayingMessage = null;
     this.idleTimeout = null;
     this.destroyed = false;
@@ -143,12 +144,15 @@ class MusicPlayer {
     }
   }
 
-  async playNext() {
+  async playNext(replay = false) {
     if (this.destroyed) return;
 
     this._killProcess();
     this._clearIdleTimeout();
-    this.currentIndex++;
+
+    if (!replay) {
+      this.currentIndex++;
+    }
 
     if (this.currentIndex >= this.queue.length) {
       this.isPlaying = false;
@@ -325,9 +329,9 @@ class MusicPlayer {
         { name: 'Song', value: truncate(track.title, 60), inline: true },
         { name: 'Artist', value: truncate(track.author, 40), inline: true },
         { name: 'Duration', value: track.durationRaw || formatDuration(track.duration), inline: true },
-        { name: 'Status', value: '▶ Playing', inline: true },
+        { name: 'Status', value: this.isRepeat ? '🔁 Repeating' : '▶ Playing', inline: true },
       )
-      .setFooter({ text: `Queue: ${this.upcomingTracks.length} more song(s)` })
+      .setFooter({ text: `Queue: ${this.upcomingTracks.length} more song(s)${this.isRepeat ? ' | 🔁 Repeat On' : ''}` })
       .setTimestamp();
 
     if (track.thumbnail) {
@@ -375,7 +379,11 @@ class MusicPlayer {
   }
 
   _handleIdle() {
-    this.playNext();
+    if (this.isRepeat && this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
+      this.playNext(true);
+    } else {
+      this.playNext();
+    }
   }
 
   _handleError(error) {
@@ -407,6 +415,7 @@ class MusicPlayer {
     this.currentIndex = -1;
     this.isPlaying = false;
     this.isPaused = false;
+    this.isRepeat = false;
     this.connection = null;
     this.player = null;
     this.nowPlayingMessage = null;

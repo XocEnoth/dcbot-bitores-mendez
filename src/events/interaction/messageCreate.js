@@ -1,3 +1,4 @@
+import { EmbedBuilder } from 'discord.js';
 import config from '../../config/index.js';
 import logger from '../../utils/logger.js';
 
@@ -18,7 +19,7 @@ const execute = async (message) => {
     await command.execute(message, args);
   } catch (error) {
     logger.error(`Error executing command "${commandName}"`, error);
-    await message.reply('❌ An error occurred while executing this command.').catch(() => {});
+    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ An error occurred while executing this command.')] }).catch(() => {});
   }
 };
 

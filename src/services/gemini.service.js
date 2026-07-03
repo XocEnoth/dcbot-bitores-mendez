@@ -68,6 +68,7 @@ Music:
 - ${config.prefix}music join : Joins the voice channel without playing any tracks immediately.
 - ${config.prefix}music queue : Displays the current music queue with interactive pagination buttons.
 - ${config.prefix}music shuffle : Shuffles the upcoming tracks in the queue.
+- ${config.prefix}music repeat [on / off] : Toggles repeat mode for the current track. When enabled, the current track will loop until repeat is turned off.
 - ${config.prefix}music 247 [on / off] : Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle.`;
 
 /**
