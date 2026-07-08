@@ -25,6 +25,7 @@ function getYtDlpBaseOptions() {
         noWarnings: true,
         skipDownload: true,
         preferFreeFormats: true,
+        jsRuntimes: `node:${process.execPath}`,
     };
     if (hasCookies()) {
         opts.cookies = COOKIES_PATH;

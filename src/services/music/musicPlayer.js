@@ -179,15 +179,14 @@ class MusicPlayer {
         rmCacheDir: true,
       };
 
+      // Always provide Node.js for yt-dlp signature solving
+      ytDlpOptions.jsRuntimes = `node:${process.execPath}`;
+
       if (useCookies) {
-        // Web client supports cookies; provide Node.js for JS signature resolution
         ytDlpOptions.cookies = COOKIES_PATH;
         ytDlpOptions.extractorArgs = 'youtube:player_client=web';
-        ytDlpOptions.jsRuntimes = `node:${process.execPath}`;
-      } else {
-        // Android/iOS clients don't need JS signature solving (fastest)
-        ytDlpOptions.extractorArgs = 'youtube:player_client=android,ios;player_skip=webpage,configs,js';
       }
+      // Without cookies, let yt-dlp use its default client rotation automatically
 
       const subprocess = youtubeDl.exec(track.url, ytDlpOptions);
 
