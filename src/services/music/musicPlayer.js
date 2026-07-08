@@ -58,6 +58,7 @@ class MusicPlayer {
     this.destroyed = false;
     this.onDestroy = null;
     this._currentProcess = null;
+    this._consecutiveFailures = 0;
   }
 
   async connect(voiceChannel, textChannel) {
@@ -171,22 +172,19 @@ class MusicPlayer {
       const ytDlpOptions = {
         o: '-',
         q: '',
-        f: 'bestaudio/best',
+        f: 'bestaudio*/best',
         r: '100K',
         forceIpv4: true,
         geoBypass: true,
         noWarnings: true,
         rmCacheDir: true,
+        jsRuntimes: `node:${process.execPath}`,
       };
-
-      // Always provide Node.js for yt-dlp signature solving
-      ytDlpOptions.jsRuntimes = `node:${process.execPath}`;
 
       if (useCookies) {
         ytDlpOptions.cookies = COOKIES_PATH;
-        ytDlpOptions.extractorArgs = 'youtube:player_client=web';
       }
-      // Without cookies, let yt-dlp use its default client rotation automatically
+      // Let yt-dlp auto-detect the best client and solve signatures via Node.js
 
       const subprocess = youtubeDl.exec(track.url, ytDlpOptions);
 
@@ -214,6 +212,7 @@ class MusicPlayer {
       this.player.play(resource);
       this.isPlaying = true;
       this.isPaused = false;
+      this._consecutiveFailures = 0; // Reset on successful play
 
       await this._sendNowPlaying();
     } catch (error) {
@@ -389,6 +388,21 @@ class MusicPlayer {
   }
 
   _handleIdle() {
+    // Protect against infinite skip loops when yt-dlp fails repeatedly
+    this._consecutiveFailures++;
+    if (this._consecutiveFailures >= 3) {
+      this._consecutiveFailures = 0;
+      this.isPlaying = false;
+      this.isPaused = false;
+      this.textChannel
+        ?.send({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Multiple tracks failed to play consecutively. Stopping playback to prevent loop. Please try again or check if YouTube is blocking the bot.')] })
+        .catch(() => {});
+      if (!this.is247) {
+        this._startIdleTimeout();
+      }
+      return;
+    }
+
     if (this.isRepeat && this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
       this.playNext(true);
     } else {
