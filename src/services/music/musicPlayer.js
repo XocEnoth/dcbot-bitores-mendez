@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { spawn } from 'child_process';
 import {
   joinVoiceChannel,
   createAudioPlayer,
@@ -11,6 +12,7 @@ import {
   StreamType,
 } from '@discordjs/voice';
 import youtubeDl from 'youtube-dl-exec';
+import ffmpegPath from 'ffmpeg-static';
 import {
   EmbedBuilder,
   ActionRowBuilder,
@@ -20,6 +22,7 @@ import {
 import config from '../../config/index.js';
 import { formatDuration, truncate } from '../../utils/formatters.js';
 import logger from '../../utils/logger.js';
+import audioNormalizer from './audioNormalizer.js';
 
 const IDLE_TIMEOUT_MS = 300_000; // 5 minutes
 const CONNECTION_TIMEOUT_MS = 30_000; // 30 seconds
@@ -58,6 +61,7 @@ class MusicPlayer {
     this.destroyed = false;
     this.onDestroy = null;
     this._currentProcess = null;
+    this._ffmpegProcess = null;
     this._consecutiveFailures = 0;
   }
 
@@ -173,6 +177,21 @@ class MusicPlayer {
     const track = this.queue[this.currentIndex];
 
     try {
+      // ================================================================
+      // Phase 1: Loudness Measurement
+      // ================================================================
+      // Measure the track's loudness BEFORE starting playback so we can
+      // apply the correct gain from the very first sample. This adds
+      // ~3-5 seconds of latency but ensures perfectly consistent volume.
+      const { gainDb, measuredLufs } = await audioNormalizer.measure(track);
+
+      logger.info(`[Normalizer] Track: ${track.title}`);
+      logger.info(`[Normalizer] Measured: ${measuredLufs} LUFS`);
+      logger.info(`[Normalizer] Applied Gain: ${gainDb > 0 ? '+' : ''}${gainDb} dB`);
+
+      // ================================================================
+      // Phase 2: yt-dlp Audio Stream
+      // ================================================================
       const useCookies = hasCookies();
       const ytDlpOptions = {
         o: '-',
@@ -210,8 +229,57 @@ class MusicPlayer {
         throw new Error('Failed to create audio stream');
       }
 
-      const resource = createAudioResource(subprocess.stdout, {
-        inputType: StreamType.Arbitrary,
+      // ================================================================
+      // Phase 3: FFmpeg Normalization Pipeline
+      // ================================================================
+      // Instead of feeding yt-dlp's raw output directly to discord.js
+      // (which would run its own FFmpeg internally), we explicitly pipe
+      // through our own FFmpeg instance with the volume filter applied.
+      //
+      // Pipeline: yt-dlp stdout → FFmpeg (volume filter) → PCM output → discord.js
+      //
+      // For recorded tracks: "volume=XdB" — simple, zero-overhead gain adjustment
+      // For live streams:    "loudnorm" — real-time dynamic normalization
+      //
+      // Output format: signed 16-bit little-endian PCM, 48kHz stereo
+      // This matches discord.js StreamType.Raw, which only needs Opus encoding
+      // (done efficiently by opusscript) — no additional FFmpeg decode step.
+      const isLive = !track.duration || track.duration <= 0;
+      const audioFilter = isLive
+        ? 'loudnorm=I=-14:LRA=11:TP=-1.5'  // Real-time normalization for live
+        : `volume=${gainDb}dB`;              // Static gain for recorded tracks
+
+      const ffmpegProc = spawn(ffmpegPath, [
+        '-i', 'pipe:0',        // Read from stdin (piped from yt-dlp)
+        '-af', audioFilter,    // Audio filter: volume gain or loudnorm
+        '-f', 's16le',         // Output format: signed 16-bit little-endian PCM
+        '-ar', '48000',        // Sample rate: 48kHz (Discord standard)
+        '-ac', '2',            // Channels: stereo
+        'pipe:1',              // Output to stdout
+      ], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+      this._ffmpegProcess = ffmpegProc;
+
+      // Pipe yt-dlp output into FFmpeg's stdin
+      subprocess.stdout.pipe(ffmpegProc.stdin);
+
+      // Suppress pipe errors that occur naturally when skip/stop kills processes
+      ffmpegProc.stdin.on('error', () => {});
+      ffmpegProc.on('error', (err) => {
+        logger.warn(`FFmpeg normalizer error: ${err.message}`);
+      });
+      ffmpegProc.on('close', (code) => {
+        // Code 255 = killed by SIGTERM (normal during skip/stop)
+        if (code && code !== 0 && code !== 255) {
+          logger.warn(`FFmpeg normalizer exited with code ${code}`);
+        }
+      });
+
+      // Create audio resource from FFmpeg's normalized PCM output
+      // StreamType.Raw tells discord.js the input is already decoded PCM
+      // and only needs Opus encoding (no additional FFmpeg decode step)
+      const resource = createAudioResource(ffmpegProc.stdout, {
+        inputType: StreamType.Raw,
       });
 
       this.player.play(resource);
@@ -311,6 +379,7 @@ class MusicPlayer {
   // --- Private methods ---
 
   _killProcess() {
+    // Kill yt-dlp subprocess
     if (this._currentProcess) {
       try {
         this._currentProcess.kill('SIGTERM');
@@ -318,6 +387,15 @@ class MusicPlayer {
         // Process may have already exited
       }
       this._currentProcess = null;
+    }
+    // Kill FFmpeg normalizer subprocess
+    if (this._ffmpegProcess) {
+      try {
+        this._ffmpegProcess.kill('SIGTERM');
+      } catch {
+        // Process may have already exited
+      }
+      this._ffmpegProcess = null;
     }
   }
 

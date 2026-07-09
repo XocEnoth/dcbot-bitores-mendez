@@ -17,6 +17,7 @@ A modular, highly scalable Discord bot built with **discord.js v14** and modern 
   - Automatically parses Spotify tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Spotify Developer API credentials required!).
 - **Interactive Controls**: Beautiful, rich embeds with live-updating buttons for real-time player control.
 - **Lyrics Display**: Click the "Show Lyrics" button on the Now Playing message to view lyrics for the current track, powered by [lrclib.net](https://lrclib.net).
+- **Volume Normalization**: Automatic LUFS-based loudness normalization (-14 LUFS target, YouTube standard) ensures consistent volume across all tracks without manual adjustment.
 - **Color-Coded Logging**: Clean, formatted console logging for ease of debugging and server health monitoring.
 
 ---
