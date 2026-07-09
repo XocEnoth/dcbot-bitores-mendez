@@ -89,68 +89,55 @@ function hasCookies() {
 }
 
 /**
- * Get the direct audio stream URL from YouTube using yt-dlp --get-url.
- *
- * This URL points directly to YouTube's CDN (e.g., rr1---sn-*.googlevideo.com)
- * and can be used by FFmpeg for HTTP-based seeking without downloading the
- * entire track. The URL typically expires after ~6 hours, but since we use it
- * immediately for measurement, expiration is not a concern.
- *
- * @param {string} trackUrl - YouTube watch URL
- * @returns {Promise<string>} Direct audio stream URL
- */
-async function getDirectUrl(trackUrl) {
-  const opts = {
-    getUrl: true,
-    format: 'bestaudio*/best',
-    noWarnings: true,
-    forceIpv4: true,
-    geoBypass: true,
-    jsRuntimes: `node:${process.execPath}`,
-  };
-  if (hasCookies()) {
-    opts.cookies = COOKIES_PATH;
-  }
-  const result = await youtubeDl(trackUrl, opts);
-  return result.trim();
-}
-
-/**
  * Measure the Integrated Loudness (LUFS) of an audio sample using FFmpeg's
- * EBU R128 loudness meter (ebur128 filter).
+ * EBU R128 loudness meter (ebur128 filter) by piping yt-dlp output directly.
  *
  * How it works:
- *   1. FFmpeg seeks to `seekSeconds` in the audio stream using input seeking
- *      (-ss before -i), which is fast because it doesn't download preceding data
- *   2. Reads `duration` seconds of audio
- *   3. Passes the audio through the ebur128 analysis filter
- *   4. Discards the output (-f null) — we only need the analysis summary
- *   5. The Integrated Loudness (I: X.X LUFS) is parsed from FFmpeg's stderr
+ *   1. yt-dlp uses `--download-sections` to download only the specific time range.
+ *   2. The output is piped directly to FFmpeg.
+ *   3. Passes the audio through the ebur128 analysis filter.
+ *   4. Discards the output (-f null) — we only need the analysis summary.
+ *   5. The Integrated Loudness (I: X.X LUFS) is parsed from FFmpeg's stderr.
  *
- * The Integrated Loudness is a single number representing the perceived
- * loudness of the entire sample, weighted according to human hearing sensitivity.
- *
- * @param {string} audioUrl  - Direct audio URL (from yt-dlp --get-url)
+ * @param {string} trackUrl  - YouTube watch URL
  * @param {number} seekSeconds - Seek position in seconds
  * @param {number} duration  - Duration to analyze in seconds
  * @returns {Promise<{lufs: number}>} Measured Integrated Loudness
  */
-function measureSample(audioUrl, seekSeconds, duration) {
+function measureSample(trackUrl, seekSeconds, duration) {
   return new Promise((resolve) => {
     let resolved = false;
+
+    const ytDlpOptions = {
+      downloadSections: `*${seekSeconds}-${seekSeconds + duration}`,
+      format: 'bestaudio*/best',
+      noWarnings: true,
+      forceIpv4: true,
+      geoBypass: true,
+      ffmpegLocation: ffmpegPath,
+      o: '-', // output to stdout
+      jsRuntimes: `node:${process.execPath}`,
+    };
+    if (hasCookies()) {
+      ytDlpOptions.cookies = COOKIES_PATH;
+    }
+
+    const ytProc = youtubeDl.exec(trackUrl, ytDlpOptions);
+    ytProc.catch(() => {}); // Prevent unhandled rejections if yt-dlp fails
 
     const done = (lufs) => {
       if (resolved) return;
       resolved = true;
       clearTimeout(timeout);
+      try {
+        ytProc.cancel(); // Terminate yt-dlp to save bandwidth
+      } catch {}
       resolve({ lufs });
     };
 
     const args = [
-      '-hide_banner',                // Suppress FFmpeg version/build info banner
-      '-ss', String(seekSeconds),    // Input seeking: fast seek to position (before -i)
-      '-t', String(duration),        // Only read N seconds from that position
-      '-i', audioUrl,                // Input: direct YouTube CDN URL (HTTP)
+      '-hide_banner',
+      '-i', 'pipe:0',                // Read from yt-dlp pipe
       '-map', '0:a',                 // Select only audio stream (ignore video if present)
       '-af', 'ebur128',              // EBU R128 loudness measurement filter
       '-f', 'null',                  // Null output muxer: discard decoded data
@@ -161,6 +148,11 @@ function measureSample(audioUrl, seekSeconds, duration) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
+    // Pipe yt-dlp stdout into ffmpeg stdin
+    if (ytProc.stdout) {
+      ytProc.stdout.pipe(proc.stdin);
+    }
+
     let stderr = '';
 
     proc.stderr.on('data', (data) => {
@@ -169,11 +161,6 @@ function measureSample(audioUrl, seekSeconds, duration) {
 
     proc.on('close', () => {
       // Parse the Integrated Loudness from ebur128's summary block.
-      // FFmpeg outputs a summary at the end of analysis like:
-      //   Summary:
-      //     Integrated loudness:
-      //       I:         -18.3 LUFS
-      //       Threshold: -28.3 LUFS
       const match = stderr.match(/Integrated loudness:\s*I:\s*(-?\d+\.?\d*)\s*LUFS/);
       if (match) {
         done(parseFloat(match[1]));
@@ -188,11 +175,9 @@ function measureSample(audioUrl, seekSeconds, duration) {
       done(TARGET_LUFS);
     });
 
-    // Safety timeout: if FFmpeg hangs (e.g., CDN timeout), don't block playback
+    // Safety timeout: if FFmpeg or yt-dlp hangs, don't block playback
     const timeout = setTimeout(() => {
-      try {
-        proc.kill('SIGTERM');
-      } catch {}
+      try { proc.kill('SIGTERM'); } catch {}
       done(TARGET_LUFS); // On timeout, proceed with no adjustment
     }, MEASURE_TIMEOUT_MS);
   });
@@ -243,10 +228,7 @@ async function measure(track) {
   }
 
   try {
-    // --- Step 1: Get direct audio URL ---
-    const directUrl = await getDirectUrl(track.url);
-
-    // --- Step 2: Calculate midpoint ---
+    // --- Step 1 & 2: Calculate midpoint ---
     // We sample from the middle of the track because:
     // - Intros/outros are often quieter (fade-in/fade-out)
     // - The middle is most representative of the track's overall loudness
@@ -254,7 +236,7 @@ async function measure(track) {
     let seekPoint = Math.max(0, Math.floor(durationSec / 2) - SAMPLE_DURATION / 2);
 
     // --- Step 3: Measure 10-second sample from the middle ---
-    let result = await measureSample(directUrl, seekPoint, SAMPLE_DURATION);
+    let result = await measureSample(track.url, seekPoint, SAMPLE_DURATION);
 
     // --- Step 4: Silence fallback ---
     // If the middle sample was silent (e.g., a silent break, spoken interlude),
@@ -265,7 +247,7 @@ async function measure(track) {
       );
       const nextSeek = seekPoint + SAMPLE_DURATION;
       if (nextSeek + SAMPLE_DURATION < durationSec) {
-        result = await measureSample(directUrl, nextSeek, SAMPLE_DURATION);
+        result = await measureSample(track.url, nextSeek, SAMPLE_DURATION);
       }
     }
 
