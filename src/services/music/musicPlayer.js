@@ -140,6 +140,8 @@ class MusicPlayer {
     if (!this.isPlaying) {
       this.currentIndex = startIndex - 1;
       await this.playNext();
+    } else {
+      this._preNormalizeNext();
     }
   }
 
@@ -151,6 +153,8 @@ class MusicPlayer {
     if (!this.isPlaying) {
       this.currentIndex = insertPos - 1;
       await this.playNext();
+    } else {
+      this._preNormalizeNext();
     }
   }
 
@@ -288,6 +292,7 @@ class MusicPlayer {
       this._consecutiveFailures = 0; // Reset on successful play
 
       await this._sendNowPlaying();
+      this._preNormalizeNext();
     } catch (error) {
       logger.error(`Failed to play: ${track.title}`, error);
       await this.textChannel
@@ -352,6 +357,7 @@ class MusicPlayer {
       ...this.queue.slice(0, this.currentIndex + 1),
       ...upcoming
     ];
+    this._preNormalizeNext();
     return true;
   }
 
@@ -490,6 +496,19 @@ class MusicPlayer {
       this.playNext(true);
     } else {
       this.playNext();
+    }
+  }
+
+  _preNormalizeNext() {
+    const nextIndex = this.currentIndex + 1;
+    if (nextIndex < this.queue.length) {
+      const nextTrack = this.queue[nextIndex];
+      // Live streams cannot be pre-normalized
+      if (nextTrack.duration && nextTrack.duration > 0) {
+        audioNormalizer.measure(nextTrack).catch((error) => {
+          logger.warn(`[Normalizer] Background pre-normalization failed for "${nextTrack.title}": ${error.message}`);
+        });
+      }
     }
   }
 

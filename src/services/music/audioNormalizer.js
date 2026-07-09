@@ -71,6 +71,7 @@ const COOKIES_PATH = path.resolve(process.cwd(), 'cookies.txt');
 
 // --- LRU-style Cache ---
 const lufsCache = new Map();
+const activeMeasurements = new Map();
 
 /**
  * Check if cookies.txt exists and contains actual cookie data.
@@ -229,63 +230,78 @@ async function measure(track) {
     return cached;
   }
 
-  try {
-    // --- Step 1 & 2: Calculate midpoint ---
-    // We sample from the middle of the track because:
-    // - Intros/outros are often quieter (fade-in/fade-out)
-    // - The middle is most representative of the track's overall loudness
-    const durationSec = durationMs / 1000;
-    let seekPoint = Math.max(0, Math.floor(durationSec / 2) - SAMPLE_DURATION / 2);
+  // --- Active measurement lookup (deduplication) ---
+  // If the track is already being normalized in the background, return the existing promise
+  if (activeMeasurements.has(track.url)) {
+    logger.info(`[Normalizer] Awaiting in-progress measurement for: ${track.title}`);
+    return activeMeasurements.get(track.url);
+  }
 
-    // --- Step 3: Measure 10-second sample from the middle ---
-    let result = await measureSample(track.url, seekPoint, SAMPLE_DURATION);
+  const promise = (async () => {
+    try {
+      // --- Step 1 & 2: Calculate midpoint ---
+      // We sample from the middle of the track because:
+      // - Intros/outros are often quieter (fade-in/fade-out)
+      // - The middle is most representative of the track's overall loudness
+      const durationSec = durationMs / 1000;
+      let seekPoint = Math.max(0, Math.floor(durationSec / 2) - SAMPLE_DURATION / 2);
 
-    // --- Step 4: Silence fallback ---
-    // If the middle sample was silent (e.g., a silent break, spoken interlude),
-    // try the next 10 seconds which is more likely to have actual music.
-    if (result.lufs <= SILENCE_THRESHOLD) {
-      logger.info(
-        `[Normalizer] Silence detected at ${seekPoint}s, retrying at ${seekPoint + SAMPLE_DURATION}s...`,
-      );
-      const nextSeek = seekPoint + SAMPLE_DURATION;
-      if (nextSeek + SAMPLE_DURATION < durationSec) {
-        result = await measureSample(track.url, nextSeek, SAMPLE_DURATION);
+      // --- Step 3: Measure 10-second sample from the middle ---
+      let result = await measureSample(track.url, seekPoint, SAMPLE_DURATION);
+
+      // --- Step 4: Silence fallback ---
+      // If the middle sample was silent (e.g., a silent break, spoken interlude),
+      // try the next 10 seconds which is more likely to have actual music.
+      if (result.lufs <= SILENCE_THRESHOLD) {
+        logger.info(
+          `[Normalizer] Silence detected at ${seekPoint}s, retrying at ${seekPoint + SAMPLE_DURATION}s...`,
+        );
+        const nextSeek = seekPoint + SAMPLE_DURATION;
+        if (nextSeek + SAMPLE_DURATION < durationSec) {
+          result = await measureSample(track.url, nextSeek, SAMPLE_DURATION);
+        }
       }
-    }
 
-    // --- Step 5: Handle persistent silence ---
-    // If the retry also returned silence, don't apply any gain.
-    // Boosting silence would only amplify noise artifacts.
-    if (result.lufs <= SILENCE_THRESHOLD) {
-      const output = { measuredLufs: result.lufs, gainDb: 0 };
+      // --- Step 5: Handle persistent silence ---
+      // If the retry also returned silence, don't apply any gain.
+      // Boosting silence would only amplify noise artifacts.
+      if (result.lufs <= SILENCE_THRESHOLD) {
+        const output = { measuredLufs: result.lufs, gainDb: 0 };
+        cacheResult(track.url, output);
+        return output;
+      }
+
+      // --- Step 6: Calculate gain adjustment ---
+      // gain = target - measured
+      // Example: target -14, measured -20 → gain +6 dB (boost quiet track)
+      // Example: target -14, measured -8  → gain -6 dB (reduce loud track)
+      const rawGain = TARGET_LUFS - result.lufs;
+
+      // --- Step 7: Clamp gain to safe range ---
+      // Prevents: excessive boost that causes clipping/distortion
+      // Prevents: excessive cut that makes audio inaudible
+      const gainDb = Math.round(Math.max(MIN_GAIN, Math.min(MAX_GAIN, rawGain)) * 10) / 10;
+
+      const output = {
+        measuredLufs: Math.round(result.lufs * 10) / 10,
+        gainDb,
+      };
       cacheResult(track.url, output);
       return output;
+    } catch (error) {
+      // Measurement failed — proceed without normalization rather than blocking playback
+      logger.warn(
+        `[Normalizer] Measurement failed for "${track.title}": ${error.message}`,
+      );
+      return { measuredLufs: TARGET_LUFS, gainDb: 0 };
+    } finally {
+      // Always remove the active measurement upon completion/failure
+      activeMeasurements.delete(track.url);
     }
+  })();
 
-    // --- Step 6: Calculate gain adjustment ---
-    // gain = target - measured
-    // Example: target -14, measured -20 → gain +6 dB (boost quiet track)
-    // Example: target -14, measured -8  → gain -6 dB (reduce loud track)
-    const rawGain = TARGET_LUFS - result.lufs;
-
-    // --- Step 7: Clamp gain to safe range ---
-    // Prevents: excessive boost that causes clipping/distortion
-    // Prevents: excessive cut that makes audio inaudible
-    const gainDb = Math.round(Math.max(MIN_GAIN, Math.min(MAX_GAIN, rawGain)) * 10) / 10;
-
-    const output = {
-      measuredLufs: Math.round(result.lufs * 10) / 10,
-      gainDb,
-    };
-    cacheResult(track.url, output);
-    return output;
-  } catch (error) {
-    // Measurement failed — proceed without normalization rather than blocking playback
-    logger.warn(
-      `[Normalizer] Measurement failed for "${track.title}": ${error.message}`,
-    );
-    return { measuredLufs: TARGET_LUFS, gainDb: 0 };
-  }
+  activeMeasurements.set(track.url, promise);
+  return promise;
 }
 
 /**
