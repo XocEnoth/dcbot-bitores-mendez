@@ -103,10 +103,11 @@ function hasCookies() {
  * @param {string} trackUrl  - YouTube watch URL
  * @param {number} seekSeconds - Seek position in seconds
  * @param {number} duration  - Duration to analyze in seconds
+ * @param {AbortSignal} [signal] - Optional abort signal
  * @returns {Promise<{lufs: number}>} Measured Integrated Loudness
  */
-function measureSample(trackUrl, seekSeconds, duration) {
-  return new Promise((resolve) => {
+function measureSample(trackUrl, seekSeconds, duration, signal) {
+  return new Promise((resolve, reject) => {
     let resolved = false;
 
     const ytDlpOptions = {
@@ -124,13 +125,33 @@ function measureSample(trackUrl, seekSeconds, duration) {
     const ytProc = youtubeDl.exec(trackUrl, ytDlpOptions);
     ytProc.catch(() => {}); // Prevent unhandled rejections if yt-dlp fails
 
-    const done = (lufs) => {
-      if (resolved) return;
-      resolved = true;
+    const abortHandler = () => {
+      cleanup();
+      reject(new Error('aborted'));
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        try { ytProc.kill('SIGTERM'); } catch {}
+        return reject(new Error('aborted'));
+      }
+      signal.addEventListener('abort', abortHandler);
+    }
+
+    const cleanup = () => {
       clearTimeout(timeout);
+      if (signal) {
+        signal.removeEventListener('abort', abortHandler);
+      }
       try {
         ytProc.kill('SIGTERM'); // Terminate yt-dlp to save bandwidth
       } catch {}
+    };
+
+    const done = (lufs) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
       resolve({ lufs });
     };
 
@@ -210,7 +231,7 @@ function measureSample(trackUrl, seekSeconds, duration) {
  * @param {object} track - Track object with { url, title, duration } properties
  * @returns {Promise<{measuredLufs: number, gainDb: number}>}
  */
-async function measure(track) {
+async function measure(track, signal) {
   const durationMs = track.duration || 0;
 
   // --- Live stream handling ---
@@ -239,6 +260,10 @@ async function measure(track) {
 
   const promise = (async () => {
     try {
+      if (signal && signal.aborted) {
+        throw new Error('aborted');
+      }
+
       // --- Step 1 & 2: Calculate midpoint ---
       // We sample from the middle of the track because:
       // - Intros/outros are often quieter (fade-in/fade-out)
@@ -247,7 +272,7 @@ async function measure(track) {
       let seekPoint = Math.max(0, Math.floor(durationSec / 2) - SAMPLE_DURATION / 2);
 
       // --- Step 3: Measure 10-second sample from the middle ---
-      let result = await measureSample(track.url, seekPoint, SAMPLE_DURATION);
+      let result = await measureSample(track.url, seekPoint, SAMPLE_DURATION, signal);
 
       // --- Step 4: Silence fallback ---
       // If the middle sample was silent (e.g., a silent break, spoken interlude),
@@ -258,7 +283,7 @@ async function measure(track) {
         );
         const nextSeek = seekPoint + SAMPLE_DURATION;
         if (nextSeek + SAMPLE_DURATION < durationSec) {
-          result = await measureSample(track.url, nextSeek, SAMPLE_DURATION);
+          result = await measureSample(track.url, nextSeek, SAMPLE_DURATION, signal);
         }
       }
 
@@ -289,6 +314,9 @@ async function measure(track) {
       cacheResult(track.url, output);
       return output;
     } catch (error) {
+      if (error.message === 'aborted') {
+        throw error;
+      }
       // Measurement failed — proceed without normalization rather than blocking playback
       logger.warn(
         `[Normalizer] Measurement failed for "${track.title}": ${error.message}`,

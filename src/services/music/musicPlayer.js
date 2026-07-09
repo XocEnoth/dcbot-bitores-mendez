@@ -500,13 +500,25 @@ class MusicPlayer {
   }
 
   _preNormalizeNext() {
+    // Abort any existing background pre-normalization to free up system resources
+    if (this._preNormalizeAbortController) {
+      try {
+        this._preNormalizeAbortController.abort();
+      } catch {}
+      this._preNormalizeAbortController = null;
+    }
+
     const nextIndex = this.currentIndex + 1;
     if (nextIndex < this.queue.length) {
       const nextTrack = this.queue[nextIndex];
       // Live streams cannot be pre-normalized
       if (nextTrack.duration && nextTrack.duration > 0) {
-        audioNormalizer.measure(nextTrack).catch((error) => {
-          logger.warn(`[Normalizer] Background pre-normalization failed for "${nextTrack.title}": ${error.message}`);
+        this._preNormalizeAbortController = new AbortController();
+        audioNormalizer.measure(nextTrack, this._preNormalizeAbortController.signal).catch((error) => {
+          // Suppress warnings for expected aborts
+          if (error.message !== 'aborted') {
+            logger.warn(`[Normalizer] Background pre-normalization failed for "${nextTrack.title}": ${error.message}`);
+          }
         });
       }
     }
@@ -546,6 +558,13 @@ class MusicPlayer {
     this.player = null;
     this.nowPlayingMessage = null;
     this._clearIdleTimeout();
+
+    if (this._preNormalizeAbortController) {
+      try {
+        this._preNormalizeAbortController.abort();
+      } catch {}
+      this._preNormalizeAbortController = null;
+    }
 
     if (this.onDestroy) {
       this.onDestroy(this.guildId);
