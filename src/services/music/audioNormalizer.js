@@ -104,6 +104,8 @@ async function getDirectUrl(trackUrl) {
     getUrl: true,
     format: 'bestaudio*/best',
     noWarnings: true,
+    forceIpv4: true,
+    geoBypass: true,
     jsRuntimes: `node:${process.execPath}`,
   };
   if (hasCookies()) {

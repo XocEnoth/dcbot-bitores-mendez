@@ -25,6 +25,8 @@ function getYtDlpBaseOptions() {
         noWarnings: true,
         skipDownload: true,
         preferFreeFormats: true,
+        forceIpv4: true,
+        geoBypass: true,
         jsRuntimes: `node:${process.execPath}`,
     };
     if (hasCookies()) {
