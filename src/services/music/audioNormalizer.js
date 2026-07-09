@@ -109,12 +109,10 @@ function measureSample(trackUrl, seekSeconds, duration) {
     let resolved = false;
 
     const ytDlpOptions = {
-      downloadSections: `*${seekSeconds}-${seekSeconds + duration}`,
       format: 'bestaudio*/best',
       noWarnings: true,
       forceIpv4: true,
       geoBypass: true,
-      ffmpegLocation: ffmpegPath,
       o: '-', // output to stdout
       jsRuntimes: `node:${process.execPath}`,
     };
@@ -130,13 +128,15 @@ function measureSample(trackUrl, seekSeconds, duration) {
       resolved = true;
       clearTimeout(timeout);
       try {
-        ytProc.cancel(); // Terminate yt-dlp to save bandwidth
+        ytProc.kill('SIGTERM'); // Terminate yt-dlp to save bandwidth
       } catch {}
       resolve({ lufs });
     };
 
     const args = [
       '-hide_banner',
+      '-ss', String(seekSeconds),    // Input seeking: seek in the piped stream
+      '-t', String(duration),        // Only read N seconds from that position
       '-i', 'pipe:0',                // Read from yt-dlp pipe
       '-map', '0:a',                 // Select only audio stream (ignore video if present)
       '-af', 'ebur128',              // EBU R128 loudness measurement filter
@@ -148,10 +148,12 @@ function measureSample(trackUrl, seekSeconds, duration) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    // Pipe yt-dlp stdout into ffmpeg stdin
+    // Suppress EPIPE/write errors when ffmpeg closes the stdin early (-t 10)
     if (ytProc.stdout) {
+      ytProc.stdout.on('error', () => {});
       ytProc.stdout.pipe(proc.stdin);
     }
+    proc.stdin.on('error', () => {});
 
     let stderr = '';
 
