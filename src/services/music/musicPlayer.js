@@ -218,7 +218,12 @@ class MusicPlayer {
 
       this._currentProcess = subprocess;
 
-      subprocess.catch(() => {});
+      subprocess.catch((err) => {
+        // Suppress expected SIGTERM/kill errors
+        if (!err.killed && err.signal !== 'SIGTERM' && err.exitCode !== 255) {
+          logger.error(`[Player] yt-dlp process failed for "${track.title}":`, err);
+        }
+      });
 
       if (subprocess.stderr) {
         subprocess.stderr.on('data', (data) => {
@@ -270,12 +275,20 @@ class MusicPlayer {
       // Suppress pipe errors that occur naturally when skip/stop kills processes
       ffmpegProc.stdin.on('error', () => {});
       ffmpegProc.on('error', (err) => {
-        logger.warn(`FFmpeg normalizer error: ${err.message}`);
+        logger.error(`FFmpeg normalizer error: ${err.message}`);
       });
+
+      let ffmpegStderr = '';
+      if (ffmpegProc.stderr) {
+        ffmpegProc.stderr.on('data', (data) => {
+          ffmpegStderr += data.toString();
+        });
+      }
+
       ffmpegProc.on('close', (code) => {
         // Code 255 = killed by SIGTERM (normal during skip/stop)
         if (code && code !== 0 && code !== 255) {
-          logger.warn(`FFmpeg normalizer exited with code ${code}`);
+          logger.error(`FFmpeg normalizer exited with code ${code}. Stderr: ${ffmpegStderr.trim()}`);
         }
       });
 
