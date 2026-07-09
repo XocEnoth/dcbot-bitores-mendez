@@ -141,7 +141,24 @@ class MusicPlayer {
       this.currentIndex = startIndex - 1;
       await this.playNext();
     } else {
-      this._preNormalizeNext();
+      this.preNormalizeNext().catch(() => {});
+    }
+  }
+
+  /**
+   * Pre-normalize the next track in the queue in the background.
+   * This ensures the gain is already calculated when the track starts playing.
+   */
+  async preNormalizeNext() {
+    if (this.queue.length === 0) return;
+    const nextTrack = this.queue[0];
+    if (!nextTrack || nextTrack.duration <= 0) return;
+    
+    try {
+      logger.info(`[Player] Pre-normalizing next track in background: ${nextTrack.title}`);
+      await audioNormalizer.measure(nextTrack);
+    } catch (err) {
+      // Ignore errors, it will retry or skip during playNext
     }
   }
 
@@ -201,7 +218,6 @@ class MusicPlayer {
         o: '-',
         q: '',
         f: 'bestaudio*/best',
-        r: '100K',
         forceIpv4: true,
         geoBypass: true,
         noWarnings: true,
@@ -237,6 +253,11 @@ class MusicPlayer {
       if (!subprocess.stdout) {
         throw new Error('Failed to create audio stream');
       }
+
+      // Pre-normalize the next track in the background for a seamless transition
+      this.preNormalizeNext().catch(err => {
+        logger.warn(`Failed to pre-normalize next track: ${err.message}`);
+      });
 
       // ================================================================
       // Phase 3: FFmpeg Normalization Pipeline

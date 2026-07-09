@@ -101,12 +101,10 @@ function hasCookies() {
  *   5. The Integrated Loudness (I: X.X LUFS) is parsed from FFmpeg's stderr.
  *
  * @param {string} trackUrl  - YouTube watch URL
- * @param {number} seekSeconds - Seek position in seconds
- * @param {number} duration  - Duration to analyze in seconds
  * @param {AbortSignal} [signal] - Optional abort signal
  * @returns {Promise<{lufs: number}>} Measured Integrated Loudness
  */
-function measureSample(trackUrl, seekSeconds, duration, signal) {
+function measureSample(trackUrl, signal) {
   return new Promise((resolve, reject) => {
     let resolved = false;
 
@@ -129,20 +127,8 @@ function measureSample(trackUrl, seekSeconds, duration, signal) {
       cleanup();
       reject(new Error('aborted'));
     };
-
-    if (signal) {
-      if (signal.aborted) {
-        try { ytProc.kill('SIGTERM'); } catch {}
-        return reject(new Error('aborted'));
-      }
-      signal.addEventListener('abort', abortHandler);
-    }
-
     const cleanup = () => {
       clearTimeout(timeout);
-      if (signal) {
-        signal.removeEventListener('abort', abortHandler);
-      }
       try {
         ytProc.kill('SIGTERM'); // Terminate yt-dlp to save bandwidth
       } catch {}
@@ -157,9 +143,8 @@ function measureSample(trackUrl, seekSeconds, duration, signal) {
 
     const args = [
       '-hide_banner',
-      '-ss', String(seekSeconds),    // Input seeking: seek in the piped stream
-      '-t', String(duration),        // Only read N seconds from that position
       '-i', 'pipe:0',                // Read from yt-dlp pipe
+      '-t', String(SAMPLE_DURATION), // Measure the first 20 seconds (fast and avoids pipe seeking timeouts)
       '-map', '0:a',                 // Select only audio stream (ignore video if present)
       '-af', 'ebur128',              // EBU R128 loudness measurement filter
       '-f', 'null',                  // Null output muxer: discard decoded data
@@ -170,7 +155,7 @@ function measureSample(trackUrl, seekSeconds, duration, signal) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    // Suppress EPIPE/write errors when ffmpeg closes the stdin early (-t 10)
+    // Suppress EPIPE/write errors when ffmpeg closes the stdin early (-t 20)
     if (ytProc.stdout) {
       ytProc.stdout.on('error', () => {});
       ytProc.stdout.pipe(proc.stdin);
@@ -264,37 +249,22 @@ async function measure(track, signal) {
         throw new Error('aborted');
       }
 
-      // --- Step 1 & 2: Calculate midpoint ---
-      // We sample from the middle of the track because:
-      // - Intros/outros are often quieter (fade-in/fade-out)
-      // - The middle is most representative of the track's overall loudness
-      const durationSec = durationMs / 1000;
-      let seekPoint = Math.max(0, Math.floor(durationSec / 2) - SAMPLE_DURATION / 2);
-
-      // --- Step 3: Measure 10-second sample from the middle ---
-      let result = await measureSample(track.url, seekPoint, SAMPLE_DURATION, signal);
-
-      // --- Step 4: Silence fallback ---
-      // If the middle sample was silent (e.g., a silent break, spoken interlude),
-      // try the next 10 seconds which is more likely to have actual music.
-      if (result.lufs <= SILENCE_THRESHOLD) {
-        logger.info(
-          `[Normalizer] Silence detected at ${seekPoint}s, retrying at ${seekPoint + SAMPLE_DURATION}s...`,
-        );
-        const nextSeek = seekPoint + SAMPLE_DURATION;
-        if (nextSeek + SAMPLE_DURATION < durationSec) {
-          result = await measureSample(track.url, nextSeek, SAMPLE_DURATION, signal);
-        }
-      }
+      logger.info(`[Normalizer] Measuring loudness for: ${track.url}`);
+      
+      const startMs = Date.now();
+      let result = await measureSample(track.url, signal);
 
       // --- Step 5: Handle persistent silence ---
-      // If the retry also returned silence, don't apply any gain.
+      // If the sample returned silence, don't apply any gain.
       // Boosting silence would only amplify noise artifacts.
       if (result.lufs <= SILENCE_THRESHOLD) {
+        logger.info(`[Normalizer] Silence detected, defaulting to target.`);
         const output = { measuredLufs: result.lufs, gainDb: 0 };
         cacheResult(track.url, output);
         return output;
       }
+      const elapsedMs = Date.now() - startMs;
+      logger.info(`[Normalizer] Measurement completed in ${elapsedMs}ms`);
 
       // --- Step 6: Calculate gain adjustment ---
       // gain = target - measured
