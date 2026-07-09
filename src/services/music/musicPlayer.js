@@ -97,12 +97,17 @@ class MusicPlayer {
       }
     });
 
-    // Prevent unhandled error crash (e.g., IP discovery socket closed)
+    // Prevent unhandled error crash (e.g., IP discovery socket closed, Cloudflare 522)
     this.connection.on('error', (error) => {
       logger.error(`Voice connection error in guild ${this.guildId}`, error);
       
       // Auto-destroy on fatal network drops to prevent infinite error loops
-      if (error.message.includes('socket closed') || error.message.includes('Cannot perform IP discovery')) {
+      const fatal = [
+        'socket closed',
+        'Cannot perform IP discovery',
+        'Unexpected server response',
+      ];
+      if (fatal.some(msg => error.message?.includes(msg))) {
         logger.info(`Destroying broken connection for guild ${this.guildId}`);
         this.destroy();
       }

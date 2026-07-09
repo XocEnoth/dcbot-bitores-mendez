@@ -491,7 +491,19 @@ const resolveYouTubePlaylistApi = async (playlistId, page) => {
 // --- Main resolver ---
 
 const resolve = async (query, page = 1) => {
-    const validated = await play.validate(query);
+    let validated;
+    try {
+        validated = await play.validate(query);
+    } catch (error) {
+        logger.warn(`play-dl validate failed: ${error.message}. Using yt-dlp fallback.`);
+        // If play-dl itself crashes (e.g. 429), treat URL-like queries as video, else as search
+        if (query.startsWith('http')) {
+            const track = await ytDlpVideoInfo(query);
+            return [track];
+        }
+        const track = await ytDlpSearch(query);
+        return [track];
+    }
 
     // YouTube video URL
     if (validated === "yt_video") {

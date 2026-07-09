@@ -36,4 +36,17 @@ const start = async () => {
   }
 };
 
+// Prevent bot crashes from unhandled errors (e.g., play-dl 429, network issues)
+process.on('unhandledRejection', (error) => {
+  logger.error('Unhandled promise rejection', error);
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', error);
+  // Only exit on truly fatal errors; keep running for recoverable ones
+  if (error.message?.includes('DISALLOWED_INTENTS') || error.message?.includes('TOKEN_INVALID')) {
+    process.exit(1);
+  }
+});
+
 start();
