@@ -174,11 +174,11 @@ function measureSample(audioUrl, seekSeconds, duration) {
       //     Integrated loudness:
       //       I:         -18.3 LUFS
       //       Threshold: -28.3 LUFS
-      const match = stderr.match(/I:\s*(-?\d+\.?\d*)\s*LUFS/);
+      const match = stderr.match(/Integrated loudness:\s*I:\s*(-?\d+\.?\d*)\s*LUFS/);
       if (match) {
         done(parseFloat(match[1]));
       } else {
-        // Could not parse — treat as silence to trigger retry logic
+        logger.warn(`[Normalizer] FFmpeg output didn't contain LUFS. stderr: ${stderr.trim()}`);
         done(SILENCE_THRESHOLD);
       }
     });
