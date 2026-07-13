@@ -105,6 +105,7 @@ npm start
 | `bm!music shuffle`| None | Shuffles the upcoming tracks in the queue. |
 | `bm!music repeat` | `[on / off]` | Toggles repeat mode for the current track. When enabled, the track will loop until repeat is turned off. |
 | `bm!music 247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
+| `bm!music anorm` | `[on / off]` | Toggles Audio Normalizer on or off for the current server. Default is ON. |
 
 ---
 

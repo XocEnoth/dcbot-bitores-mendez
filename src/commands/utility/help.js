@@ -68,7 +68,7 @@ const execute = async (message) => {
                 },
                 {
                     name: "Music",
-                    value: `\`${config.prefix}music play <query/url> [page]\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music insert <query/url> [page]\`\nInsert a track to the front of the queue.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music shuffle\`\nShuffle the upcoming tracks in the queue.\n\n\`${config.prefix}music repeat [on/off]\`\nToggle repeat mode for the current track.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music join\`\nJoin the voice channel without playing anything.\n\n\`${config.prefix}music 247 [on/off]\`\nToggle 24/7 mode.`,
+                    value: `\`${config.prefix}music play <query/url> [page]\`\nPlay a track from YouTube/Spotify.\n\n\`${config.prefix}music insert <query/url> [page]\`\nInsert a track to the front of the queue.\n\n\`${config.prefix}music pause\` · \`resume\` · \`skip\` · \`stop\`\nControl music playback.\n\n\`${config.prefix}music queue\`\nDisplay the track queue.\n\n\`${config.prefix}music shuffle\`\nShuffle the upcoming tracks in the queue.\n\n\`${config.prefix}music repeat [on/off]\`\nToggle repeat mode for the current track.\n\n\`${config.prefix}music leave\`\nDisconnect the bot from the voice channel.\n\n\`${config.prefix}music join\`\nJoin the voice channel without playing anything.\n\n\`${config.prefix}music 247 [on/off]\`\nToggle 24/7 mode.\n\n\`${config.prefix}music anorm [on/off]\`\nToggle Audio Normalizer.`,
                     inline: false,
                 },
             )

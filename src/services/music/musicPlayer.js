@@ -56,6 +56,7 @@ class MusicPlayer {
     this.isPaused = false;
     this.is247 = false;
     this.isRepeat = false;
+    this.isNormalizerEnabled = true;
     this.nowPlayingMessage = null;
     this.idleTimeout = null;
     this.destroyed = false;
@@ -150,6 +151,7 @@ class MusicPlayer {
    * This ensures the gain is already calculated when the track starts playing.
    */
   async preNormalizeNext() {
+    if (!this.isNormalizerEnabled) return;
     if (this.queue.length === 0) return;
     const nextTrack = this.queue[0];
     if (!nextTrack || nextTrack.duration <= 0) return;
@@ -201,14 +203,16 @@ class MusicPlayer {
       // ================================================================
       // Phase 1: Loudness Measurement
       // ================================================================
-      // Measure the track's loudness BEFORE starting playback so we can
-      // apply the correct gain from the very first sample. This adds
-      // ~3-5 seconds of latency but ensures perfectly consistent volume.
-      const { gainDb, measuredLufs } = await audioNormalizer.measure(track);
-
-      logger.info(`[Normalizer] Track: ${track.title}`);
-      logger.info(`[Normalizer] Measured: ${measuredLufs} LUFS`);
-      logger.info(`[Normalizer] Applied Gain: ${gainDb > 0 ? '+' : ''}${gainDb} dB`);
+      let gainDb = 0;
+      if (this.isNormalizerEnabled) {
+        const { gainDb: calculatedGain, measuredLufs } = await audioNormalizer.measure(track);
+        gainDb = calculatedGain;
+        logger.info(`[Normalizer] Track: ${track.title}`);
+        logger.info(`[Normalizer] Measured: ${measuredLufs} LUFS`);
+        logger.info(`[Normalizer] Applied Gain: ${gainDb > 0 ? '+' : ''}${gainDb} dB`);
+      } else {
+        logger.info(`[Normalizer] Skipped for: ${track.title} (Audio Normalizer Disabled)`);
+      }
 
       // ================================================================
       // Phase 2: yt-dlp Audio Stream
@@ -452,7 +456,7 @@ class MusicPlayer {
         { name: 'Duration', value: track.durationRaw || formatDuration(track.duration), inline: true },
         { name: 'Status', value: this.isRepeat ? '🔁 Repeating' : '▶ Playing', inline: true },
       )
-      .setFooter({ text: `Queue: ${this.upcomingTracks.length} more song(s)${this.isRepeat ? ' | 🔁 Repeat On' : ''}` })
+      .setFooter({ text: `Queue: ${this.upcomingTracks.length} more song(s)${this.isRepeat ? ' | 🔁 Repeat On' : ''} | 🎚️ Audio Normalizer: ${this.isNormalizerEnabled ? 'ON' : 'OFF'}` })
       .setTimestamp();
 
     if (track.thumbnail) {
