@@ -19,7 +19,7 @@ const execute = async (message) => {
     await command.execute(message, args);
   } catch (error) {
     logger.error(`Error executing command "${commandName}"`, error);
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ An error occurred while executing this command.')] }).catch(() => {});
+    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ An error occurred while executing this command.\n\n*If this issue persists, please contact Discord: **xocenoth**.*')] }).catch(() => {});
   }
 };
 

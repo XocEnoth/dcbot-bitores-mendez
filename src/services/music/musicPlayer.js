@@ -330,7 +330,7 @@ class MusicPlayer {
     } catch (error) {
       logger.error(`Failed to play: ${track.title}`, error);
       await this.textChannel
-        ?.send({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Failed to play **${truncate(track.title, 50)}**. Skipping...`)] })
+        ?.send({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Failed to play **${truncate(track.title, 50)}**. Skipping...\n\n*If this issue persists, please contact Discord: **xocenoth**.*`)] })
         .catch(() => {});
       await this.playNext();
     }

@@ -1,7 +1,7 @@
 import playerManager from '../../services/music/playerManager.js';
 import config from '../../config/index.js';
 import { buildQueueEmbed, buildQueueButtons, TRACKS_PER_PAGE } from '../../utils/queueBuilder.js';
-
+import { EmbedBuilder } from 'discord.js';
 
 const name = 'queue';
 const description = 'Display the track queue';
@@ -10,7 +10,7 @@ const subcommand = true;
 const execute = async (message) => {
   const player = playerManager.getPlayer(message.guild.id);
   if (!player || player.queue.length === 0) {
-    return message.reply(`📜 The queue is empty. Use \`${config.prefix}music play <track>\` to add tracks.`);
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`📜 The queue is empty. Use \`${config.prefix}music play <track>\` to add tracks.`)] });
   }
 
   const totalPages = Math.ceil(player.queue.length / TRACKS_PER_PAGE);

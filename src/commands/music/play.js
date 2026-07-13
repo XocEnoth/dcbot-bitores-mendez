@@ -97,7 +97,7 @@ const execute = async (message, args) => {
       logger.error('Error resolving track', error);
     }
     
-    await loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ ${errorMsg}`)] });
+    await loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ ${errorMsg}\n\n*If this issue persists, please contact Discord: **xocenoth**.*`)] });
   }
 };
 
