@@ -71,6 +71,27 @@ const ytDlpSearch = async (query) => {
     };
 };
 
+const ytDlpMixPlaylist = async (query) => {
+    logger.info(`Falling back to yt-dlp for Mix playlist: ${query}`);
+    const opts = getYtDlpBaseOptions();
+    opts.dumpSingleJson = true;
+    opts.flatPlaylist = true;
+    const info = await youtubeDl(query, opts);
+    
+    if (!info.entries || info.entries.length === 0) {
+        throw new Error('yt-dlp could not extract entries from Mix playlist.');
+    }
+    
+    return info.entries.map(entry => ({
+        title: entry.title || 'Unknown Title',
+        author: entry.uploader || entry.channel || 'Unknown Artist',
+        url: entry.url || `https://www.youtube.com/watch?v=${entry.id}`,
+        duration: (entry.duration || 0) * 1000,
+        durationRaw: formatSecondsRaw(entry.duration || 0),
+        thumbnail: entry.thumbnail || null,
+    }));
+};
+
 // --- YouTube helpers ---
 
 const extractTrackInfo = (video) => ({
@@ -548,17 +569,21 @@ const resolve = async (query, page = 1) => {
         } catch (error) {
             // Fallback for YouTube Mix playlists when play-dl fails to parse the new YouTube UI
             if (isMix && (error.message.includes('browseId') || error.message.includes('unviewable'))) {
-                logger.warn(`play-dl failed to parse Mix playlist ${listId}, falling back to single video extraction.`);
+                logger.warn(`play-dl failed to parse Mix playlist ${listId}, falling back to yt-dlp Mix extraction.`);
                 try {
-                    const info = await play.video_info(query);
-                    return [extractTrackInfo(info.video_details)];
-                } catch {
-                    try {
-                        const track = await ytDlpVideoInfo(query);
-                        return [track];
-                    } catch (ytDlpError) {
-                        logger.error(`yt-dlp fallback also failed for Mix ${listId}:`, ytDlpError);
+                    const tracks = await ytDlpMixPlaylist(query);
+                    // Paginate manually since we bypass play-dl's page logic here
+                    const MAX = 50;
+                    if (page === 'all') return tracks;
+                    
+                    const startIndex = (page - 1) * MAX;
+                    const limited = tracks.slice(startIndex, startIndex + MAX);
+                    if (limited.length === 0) {
+                         throw new Error(`Page ${page} is empty. The Mix only has ${Math.ceil(tracks.length / MAX)} page(s).`);
                     }
+                    return limited;
+                } catch (ytDlpError) {
+                    logger.error(`yt-dlp fallback also failed for Mix ${listId}:`, ytDlpError);
                 }
             }
 
