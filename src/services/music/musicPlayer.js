@@ -221,7 +221,7 @@ class MusicPlayer {
       const ytDlpOptions = {
         o: '-',
         q: '',
-        f: 'bestaudio*/best',
+        f: 'bestaudio/best',
         forceIpv4: true,
         geoBypass: true,
         noWarnings: true,

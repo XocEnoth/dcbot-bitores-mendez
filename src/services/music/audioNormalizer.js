@@ -109,7 +109,7 @@ function measureSample(trackUrl, signal) {
     let resolved = false;
 
     const ytDlpOptions = {
-      format: 'bestaudio*/best',
+      format: 'bestaudio/best',
       noWarnings: true,
       forceIpv4: true,
       geoBypass: true,
