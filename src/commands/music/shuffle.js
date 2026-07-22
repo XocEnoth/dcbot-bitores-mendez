@@ -3,10 +3,10 @@ import { EmbedBuilder } from 'discord.js';
 import config from '../../config/index.js';
 
 const name = 'shuffle';
-const description = 'Shuffle the upcoming tracks in the queue';
+const description = 'Toggles shuffle mode on or off';
 
 /**
- * Executes the shuffle command to randomize upcoming tracks in queue.
+ * Executes the shuffle command to toggle shuffle mode for upcoming tracks.
  *
  * @param {import('discord.js').Message} message - The Discord message object.
  */
@@ -17,19 +17,17 @@ const execute = async (message) => {
   }
 
   const player = playerManager.getPlayer(message.guild.id);
-  if (!player || player.queue.length <= player.currentIndex + 1) {
-    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ Not enough upcoming tracks in the queue to shuffle.')] });
+  if (!player) {
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No music is currently playing.')] });
   }
 
   if (voiceChannel.id !== player.voiceChannel?.id) {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  if (player.shuffle()) {
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔀 The queue has been shuffled.')] });
-  } else {
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Not enough upcoming tracks to shuffle.')] });
-  }
+  const isEnabled = player.shuffle();
+  const status = isEnabled ? '**Enabled** 🔀' : '**Disabled** ❌';
+  await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔀 Shuffle mode status: ${status}`)] });
 };
 
 export default { name, description, execute };

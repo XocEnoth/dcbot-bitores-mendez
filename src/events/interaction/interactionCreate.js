@@ -115,22 +115,8 @@ const execute = async (interaction) => {
       }
 
       case 'music_shuffle': {
-        if (player.queue.length <= player.currentIndex + 1) {
-          await interaction.reply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ Not enough upcoming tracks in the queue to shuffle.')],
-            flags: MessageFlags.Ephemeral,
-          });
-        } else if (player.shuffle()) {
-          await interaction.reply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔀 The queue has been shuffled.')],
-            flags: MessageFlags.Ephemeral,
-          });
-        } else {
-          await interaction.reply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Not enough upcoming tracks to shuffle.')],
-            flags: MessageFlags.Ephemeral,
-          });
-        }
+        player.shuffle();
+        await interaction.deferUpdate().catch(() => {});
         break;
       }
 

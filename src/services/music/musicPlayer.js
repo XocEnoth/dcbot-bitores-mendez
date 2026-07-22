@@ -56,6 +56,7 @@ class MusicPlayer {
     this.isPaused = false;
     this.is247 = false;
     this.isRepeat = false;
+    this.isShuffle = false;
     this.isNormalizerEnabled = true;
     this.nowPlayingMessage = null;
     this.idleTimeout = null;
@@ -171,6 +172,16 @@ class MusicPlayer {
     this._clearIdleTimeout();
 
     if (!replay) {
+      if (this.isShuffle && this.currentIndex + 1 < this.queue.length) {
+        const remainingStartIndex = this.currentIndex + 1;
+        const remainingLength = this.queue.length - remainingStartIndex;
+        const randomIndex = remainingStartIndex + Math.floor(Math.random() * remainingLength);
+        
+        // Swap with the next index so it gets played next
+        const temp = this.queue[remainingStartIndex];
+        this.queue[remainingStartIndex] = this.queue[randomIndex];
+        this.queue[randomIndex] = temp;
+      }
       this.currentIndex++;
     }
 
@@ -365,25 +376,16 @@ class MusicPlayer {
     }
   }
 
+  /**
+   * Toggles the shuffle mode on or off.
+   * When enabled, the next track is randomly selected from the remaining queue.
+   *
+   * @returns {boolean} The new shuffle state.
+   */
   shuffle() {
-    if (this.queue.length <= this.currentIndex + 2) return false;
-    
-    // Extract upcoming tracks
-    const upcoming = this.queue.slice(this.currentIndex + 1);
-    
-    // Fisher-Yates shuffle
-    for (let i = upcoming.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
-    }
-    
-    // Re-assemble queue
-    this.queue = [
-      ...this.queue.slice(0, this.currentIndex + 1),
-      ...upcoming
-    ];
-    this._preNormalizeNext();
-    return true;
+    this.isShuffle = !this.isShuffle;
+    this.updateNowPlayingMessage();
+    return this.isShuffle;
   }
 
   get currentTrack() {
@@ -500,7 +502,7 @@ class MusicPlayer {
 
     const row2 = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('music_repeat').setEmoji('🔁').setStyle(this.isRepeat ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(this.isShuffle ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('music_queue').setEmoji('📑').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_lyrics').setEmoji('📜').setStyle(ButtonStyle.Secondary)
