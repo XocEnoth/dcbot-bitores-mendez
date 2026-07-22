@@ -88,7 +88,9 @@ class MusicPlayer {
     this.connection.subscribe(this.player);
 
     // Handle audio player state transitions
-    this.player.on(AudioPlayerStatus.Idle, () => this._handleIdle());
+    this.player.on(AudioPlayerStatus.Idle, () => {
+      this._handleIdle().catch(() => {});
+    });
     this.player.on('error', (error) => this._handleError(error));
 
     // Handle voice connection disconnects
@@ -424,7 +426,7 @@ class MusicPlayer {
     }
   }
 
-  _buildNowPlayingPayload() {
+  _buildNowPlayingPayload(forceComplete = false) {
     const track = this.currentTrack;
     if (!track || !this.textChannel) return null;
 
@@ -442,7 +444,9 @@ class MusicPlayer {
     const durationRaw = track.duration > 0 ? formatCompact(track.duration) : track.durationRaw || "00:00";
     
     let currentMs = 0;
-    if (this.player?.state?.resource) {
+    if (forceComplete && track.duration > 0) {
+      currentMs = track.duration;
+    } else if (this.player?.state?.resource) {
       currentMs = this.player.state.resource.playbackDuration;
     }
     const currentRaw = formatCompact(currentMs);
@@ -538,7 +542,15 @@ class MusicPlayer {
     }
   }
 
-  _handleIdle() {
+  async _handleIdle() {
+    // Force timeline to 100% completion visually before moving on
+    if (this.nowPlayingMessage && this.isPlaying) {
+      const payload = this._buildNowPlayingPayload(true);
+      if (payload) {
+        await this.nowPlayingMessage.edit(payload).catch(() => {});
+      }
+    }
+
     // Protect against infinite skip loops when yt-dlp fails repeatedly
     this._consecutiveFailures++;
     if (this._consecutiveFailures >= 3) {
