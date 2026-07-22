@@ -21,11 +21,25 @@ const execute = async (message) => {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No music is currently playing.')] });
   }
 
+  const args = message.content.split(' ').slice(1);
+  let forceState = null;
+
   if (voiceChannel.id !== player.voiceChannel?.id) {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  const isEnabled = player.shuffle();
+  if (args.length > 0) {
+    const arg = args[0].toLowerCase();
+    if (arg === 'on') {
+      forceState = true;
+    } else if (arg === 'off') {
+      forceState = false;
+    } else {
+      return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Invalid argument. Please use \`${config.prefix}shuffle on\` or \`${config.prefix}shuffle off\`.`)] });
+    }
+  }
+
+  const isEnabled = player.shuffle(forceState);
   const status = isEnabled ? '**Enabled** 🔀' : '**Disabled** ❌';
   await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔀 Shuffle mode status: ${status}`)] });
 };

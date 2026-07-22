@@ -102,7 +102,7 @@ npm start
 | `bm!leave` | None | Disconnects the bot from the voice channel and cleans up resources. |
 | `bm!join`  | None | Joins the voice channel without playing any tracks immediately. |
 | `bm!queue` | None | Displays the current music queue with interactive pagination buttons. |
-| `bm!shuffle`| None | Toggles shuffle mode on or off. When enabled, the next track is randomly selected from the remaining queue. |
+| `bm!shuffle`| `[on / off]` | Toggles shuffle mode on or off. When enabled, the next track is randomly selected from the remaining queue. |
 | `bm!repeat` | `[on / off]` | Toggles repeat mode for the current track. When enabled, the track will loop until repeat is turned off. |
 | `bm!247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
 | `bm!anorm` | `[on / off]` | Toggles Audio Normalizer on or off for the current server. Default is ON. |

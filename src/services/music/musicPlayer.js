@@ -377,13 +377,18 @@ class MusicPlayer {
   }
 
   /**
-   * Toggles the shuffle mode on or off.
+   * Toggles or sets the shuffle mode.
    * When enabled, the next track is randomly selected from the remaining queue.
    *
+   * @param {boolean|null} forceState - Optional boolean to force state ON/OFF. If null, it toggles.
    * @returns {boolean} The new shuffle state.
    */
-  shuffle() {
-    this.isShuffle = !this.isShuffle;
+  shuffle(forceState = null) {
+    if (forceState !== null) {
+      this.isShuffle = forceState;
+    } else {
+      this.isShuffle = !this.isShuffle;
+    }
     this.updateNowPlayingMessage();
     return this.isShuffle;
   }
