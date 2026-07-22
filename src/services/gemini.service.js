@@ -58,18 +58,19 @@ Utility:
 - ${config.prefix}chat <prompt> : Chat with the BM AI Assistant (powered by Google Gemini API). Includes rate limiting and pagination.
 
 Music:
-- ${config.prefix}music play <query or URL> [page] : Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists.
-- ${config.prefix}music insert <query or URL> [page] : Inserts a track/playlist to the front of the queue (plays next).
-- ${config.prefix}music pause : Pauses the current audio playback.
-- ${config.prefix}music resume : Resumes the paused audio playback.
-- ${config.prefix}music skip : Skips the current playing song.
-- ${config.prefix}music stop : Stops playback, clears the queue, and resets the player status.
-- ${config.prefix}music leave : Disconnects the bot from the voice channel and cleans up resources.
-- ${config.prefix}music join : Joins the voice channel without playing any tracks immediately.
-- ${config.prefix}music queue : Displays the current music queue with interactive pagination buttons.
-- ${config.prefix}music shuffle : Shuffles the upcoming tracks in the queue.
-- ${config.prefix}music repeat [on / off] : Toggles repeat mode for the current track. When enabled, the current track will loop until repeat is turned off.
-- ${config.prefix}music 247 [on / off] : Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle.`;
+- ${config.prefix}play <query or URL> [page] : Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists.
+- ${config.prefix}insert <query or URL> [page] : Inserts a track/playlist to the front of the queue (plays next).
+- ${config.prefix}pause : Pauses the current audio playback.
+- ${config.prefix}resume : Resumes the paused audio playback.
+- ${config.prefix}skip : Skips the current playing song.
+- ${config.prefix}stop : Stops playback, clears the queue, and resets the player status.
+- ${config.prefix}leave : Disconnects the bot from the voice channel and cleans up resources.
+- ${config.prefix}join : Joins the voice channel without playing any tracks immediately.
+- ${config.prefix}queue : Displays the current music queue with interactive pagination buttons.
+- ${config.prefix}shuffle : Shuffles the upcoming tracks in the queue.
+- ${config.prefix}repeat [on / off] : Toggles repeat mode for the current track. When enabled, the current track will loop until repeat is turned off.
+- ${config.prefix}247 [on / off] : Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle.
+- ${config.prefix}anorm [on / off] : Toggles Audio Normalizer on or off for the current server.`;
 
 /**
  * Generates a response using the Gemini API.

@@ -4,8 +4,12 @@ import config from '../../config/index.js';
 
 const name = 'stop';
 const description = 'Stop playback and clear the queue';
-const subcommand = true;
 
+/**
+ * Executes the stop command to halt audio playback and purge the queue.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -25,4 +29,4 @@ const execute = async (message) => {
   await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⏹ Playback stopped and queue cleared.')] });
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

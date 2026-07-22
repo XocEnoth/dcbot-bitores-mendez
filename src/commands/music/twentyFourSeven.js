@@ -4,8 +4,13 @@ import config from '../../config/index.js';
 
 const name = '247';
 const description = 'Toggle 24/7 mode to keep the bot in the voice channel';
-const subcommand = true;
 
+/**
+ * Executes the 24/7 mode toggle command.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ * @param {string[]} args - Command arguments.
+ */
 const execute = async (message, args) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -45,8 +50,8 @@ const execute = async (message, args) => {
 
   const status = player.is247 ? '**Enabled** ✅' : '**Disabled** ❌';
   await message.reply({
-    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔄 24/7 mode status: ${status}\nUse \`${config.prefix}music 247 on\` or \`${config.prefix}music 247 off\` to change it.`)]
+    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔄 24/7 mode status: ${status}\nUse \`${config.prefix}247 on\` or \`${config.prefix}247 off\` to change it.`)]
   });
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

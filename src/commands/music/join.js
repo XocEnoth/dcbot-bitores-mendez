@@ -4,8 +4,12 @@ import config from '../../config/index.js';
 
 const name = 'join';
 const description = 'Join the voice channel without playing anything';
-const subcommand = true;
 
+/**
+ * Executes the join command to connect the bot to the author's voice channel.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -39,4 +43,4 @@ const execute = async (message) => {
   }
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

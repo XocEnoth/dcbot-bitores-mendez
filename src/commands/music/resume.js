@@ -4,8 +4,12 @@ import config from '../../config/index.js';
 
 const name = 'resume';
 const description = 'Resume the paused playback';
-const subcommand = true;
 
+/**
+ * Executes the resume command to resume audio playback.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -28,4 +32,4 @@ const execute = async (message) => {
   }
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

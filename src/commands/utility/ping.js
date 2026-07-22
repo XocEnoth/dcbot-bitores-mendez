@@ -4,6 +4,11 @@ import config from '../../config/index.js';
 const name = "ping";
 const description = "Display bot and Discord API latency";
 
+/**
+ * Executes the ping command to measure bot roundtrip and API latency.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
     const sentTimestamp = Date.now();
 

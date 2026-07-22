@@ -4,8 +4,12 @@ import config from '../../config/index.js';
 
 const name = 'leave';
 const description = 'Disconnect the bot from the voice channel';
-const subcommand = true;
 
+/**
+ * Executes the leave command to disconnect the bot from the voice channel.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -25,4 +29,4 @@ const execute = async (message) => {
   await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('👋 Disconnected from voice channel.')] });
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

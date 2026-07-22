@@ -1,4 +1,5 @@
 import logger from "../../utils/logger.js";
+import config from "../../config/index.js";
 
 // --- Title/Artist cleanup for better lyrics search ---
 
@@ -71,7 +72,7 @@ const searchLrclib = async (title, artist) => {
         });
         try {
             const res = await fetch(`${LRCLIB_SEARCH}?${params}`, {
-                headers: { "User-Agent": "dcbot-bitores-mendez/1.0.0" },
+                headers: { "User-Agent": `dcbot-bitores-mendez/${config.version}` },
             });
             if (res.ok) {
                 const results = await res.json();
@@ -88,7 +89,7 @@ const searchLrclib = async (title, artist) => {
     try {
         const res = await fetch(
             `${LRCLIB_SEARCH}?q=${encodeURIComponent(query)}`,
-            { headers: { "User-Agent": "dcbot-bitores-mendez/1.0.0" } },
+            { headers: { "User-Agent": `dcbot-bitores-mendez/${config.version}` } },
         );
         if (res.ok) {
             const results = await res.json();

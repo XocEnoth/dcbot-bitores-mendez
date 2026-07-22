@@ -5,8 +5,12 @@ import config from '../../config/index.js';
 
 const name = 'skip';
 const description = 'Skip the current track';
-const subcommand = true;
 
+/**
+ * Executes the skip command to advance to the next track in queue.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -27,4 +31,4 @@ const execute = async (message) => {
   await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`⏭ Skipped **${title}**.`)] });
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

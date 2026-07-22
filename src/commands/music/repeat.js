@@ -4,8 +4,13 @@ import config from '../../config/index.js';
 
 const name = 'repeat';
 const description = 'Toggle repeat mode for the current track';
-const subcommand = true;
 
+/**
+ * Executes the repeat command to toggle looping for the active track.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ * @param {string[]} args - Command arguments.
+ */
 const execute = async (message, args) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -41,8 +46,8 @@ const execute = async (message, args) => {
 
   const status = player.isRepeat ? '**Enabled** ✅' : '**Disabled** ❌';
   await message.reply({
-    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔁 Repeat mode status: ${status}\nUse \`${config.prefix}music repeat on\` or \`${config.prefix}music repeat off\` to change it.`)]
+    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔁 Repeat mode status: ${status}\nUse \`${config.prefix}repeat on\` or \`${config.prefix}repeat off\` to change it.`)]
   });
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

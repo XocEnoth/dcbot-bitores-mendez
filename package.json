@@ -1,6 +1,6 @@
 {
   "name": "dcbot-bitores-mendez",
-  "version": "1.0.0",
+  "version": "6.7.0",
   "description": "A modular Discord bot built with discord.js and ES6 modules",
   "main": "src/index.js",
   "type": "module",
@@ -20,8 +20,8 @@
   "license": "MIT",
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
-    "@google/genai": "^2.11.0",
-    "discord.js": "^14.26.5",
+    "@google/genai": "^2.13.0",
+    "discord.js": "^14.27.0",
     "dotenv": "^17.4.2",
     "ffmpeg-static": "^5.3.0",
     "libsodium-wrappers": "^0.8.4",

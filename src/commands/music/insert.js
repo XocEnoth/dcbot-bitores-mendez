@@ -7,8 +7,13 @@ import logger from '../../utils/logger.js';
 
 const name = 'insert';
 const description = 'Insert a track to the front of the queue (plays next)';
-const subcommand = true;
 
+/**
+ * Executes the insert command to place a track/playlist next in queue.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ * @param {string[]} args - Command arguments.
+ */
 const execute = async (message, args) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -29,7 +34,7 @@ const execute = async (message, args) => {
 
   const query = args.join(' ');
   if (!query) {
-    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Please enter a search query or URL.\nExample: \`${config.prefix}music insert never gonna give you up\``)] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Please enter a search query or URL.\nExample: \`${config.prefix}insert never gonna give you up\``)] });
   }
 
   const permissions = voiceChannel.permissionsFor(message.client.user);
@@ -101,4 +106,4 @@ const execute = async (message, args) => {
   }
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

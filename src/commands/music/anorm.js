@@ -4,8 +4,13 @@ import config from '../../config/index.js';
 
 const name = 'anorm';
 const description = 'Toggle Audio Normalizer on or off for the current server.';
-const subcommand = true;
 
+/**
+ * Executes the Audio Normalizer command.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ * @param {string[]} args - Command arguments.
+ */
 const execute = async (message, args) => {
   const player = playerManager.getPlayer(message.guild.id);
   if (!player) {
@@ -39,8 +44,8 @@ const execute = async (message, args) => {
   
   const statusMsg = player.isNormalizerEnabled ? '**Enabled** ✅' : '**Disabled** ❌';
   await message.reply({
-    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🎚️ Audio Normalizer status: ${statusMsg}\nUse \`${config.prefix}music anorm on\` or \`${config.prefix}music anorm off\` to change it.`)]
+    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🎚️ Audio Normalizer status: ${statusMsg}\nUse \`${config.prefix}anorm on\` or \`${config.prefix}anorm off\` to change it.`)]
   });
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

@@ -6,6 +6,12 @@ import { chatRateLimiter } from '../../utils/rateLimiter.js';
 const name = "chat";
 const description = "Chat with BM AI Assistant";
 
+/**
+ * Executes the AI chat command to prompt Google Gemini.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ * @param {string[]} args - Command arguments.
+ */
 const execute = async (message, args) => {
     // 1. Rate Limiting Check
     const rateLimit = chatRateLimiter.check(message.author.id);

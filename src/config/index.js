@@ -23,7 +23,7 @@ const config = Object.freeze({
   token: process.env.DISCORD_TOKEN,
   prefix: process.env.BOT_PREFIX || 'bm!',
   embedColor: '#ed4245',
-  version: '1.0.0',
+  version: '6.7.0',
   spotify: Object.freeze({
     clientId: process.env.SPOTIFY_CLIENT_ID || null,
     clientSecret: process.env.SPOTIFY_CLIENT_SECRET || null,

@@ -1,4 +1,4 @@
-# 🤖 Bitores Mendez Discord Bot
+# 🤖 Bitores Mendez Discord Bot (v6.7.0)
 
 [![discord.js](https://img.shields.io/badge/discord.js-v14.26-blue.svg?logo=discord&logoColor=white)](https://discord.js.org/)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -11,13 +11,13 @@ A modular, highly scalable Discord bot built with **discord.js v14** and modern 
 ## ✨ Features
 
 - **Modular Architecture**: Command and event handlers load dynamically, allowing you to add new features seamlessly.
-- **Advanced Music Engine**: Play, pause, resume, skip, stop, and queue tracks. Includes a **24/7 mode** to keep the bot connected.
+- **Advanced Music Engine**: Play, pause, resume, skip, stop, and queue tracks using direct prefix commands (`bm!play`, `bm!insert`, `bm!skip`, etc.). Includes a **24/7 mode** to keep the bot connected.
 - **Dynamic Track Resolution**:
   - Resolves YouTube videos, playlists, and search queries.
   - Automatically parses Spotify tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Spotify Developer API credentials required!).
 - **Interactive Controls**: Beautiful, rich embeds with live-updating buttons for real-time player control.
 - **Lyrics Display**: Click the "Show Lyrics" button on the Now Playing message to view lyrics for the current track, powered by [lrclib.net](https://lrclib.net).
-- **Volume Normalization**: Automatic LUFS-based loudness normalization (-14 LUFS target, YouTube standard) ensures consistent volume across all tracks without manual adjustment.
+- **Volume Normalization**: Automatic LUFS-based loudness normalization (-14 LUFS target, YouTube standard) ensures consistent volume across all tracks without manual adjustment. Toggleable per server via `bm!anorm`.
 - **Color-Coded Logging**: Clean, formatted console logging for ease of debugging and server health monitoring.
 
 ---
@@ -93,19 +93,19 @@ npm start
 ### Music Commands
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `bm!music play` | `<query or URL> [page]` | Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists. |
-| `bm!music insert` | `<query or URL> [page]` | Inserts a track/playlist to the front of the queue (plays next). |
-| `bm!music pause` | None | Pauses the current audio playback. |
-| `bm!music resume`| None | Resumes the paused audio playback. |
-| `bm!music skip`  | None | Skips the current playing song. |
-| `bm!music stop`  | None | Stops playback, clears the queue, and resets the player status. |
-| `bm!music leave` | None | Disconnects the bot from the voice channel and cleans up resources. |
-| `bm!music join`  | None | Joins the voice channel without playing any tracks immediately. |
-| `bm!music queue` | None | Displays the current music queue with interactive pagination buttons. |
-| `bm!music shuffle`| None | Shuffles the upcoming tracks in the queue. |
-| `bm!music repeat` | `[on / off]` | Toggles repeat mode for the current track. When enabled, the track will loop until repeat is turned off. |
-| `bm!music 247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
-| `bm!music anorm` | `[on / off]` | Toggles Audio Normalizer on or off for the current server. Default is ON. |
+| `bm!play` | `<query or URL> [page]` | Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists. |
+| `bm!insert` | `<query or URL> [page]` | Inserts a track/playlist to the front of the queue (plays next). |
+| `bm!pause` | None | Pauses the current audio playback. |
+| `bm!resume`| None | Resumes the paused audio playback. |
+| `bm!skip`  | None | Skips the current playing song. |
+| `bm!stop`  | None | Stops playback, clears the queue, and resets the player status. |
+| `bm!leave` | None | Disconnects the bot from the voice channel and cleans up resources. |
+| `bm!join`  | None | Joins the voice channel without playing any tracks immediately. |
+| `bm!queue` | None | Displays the current music queue with interactive pagination buttons. |
+| `bm!shuffle`| None | Shuffles the upcoming tracks in the queue. |
+| `bm!repeat` | `[on / off]` | Toggles repeat mode for the current track. When enabled, the track will loop until repeat is turned off. |
+| `bm!247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
+| `bm!anorm` | `[on / off]` | Toggles Audio Normalizer on or off for the current server. Default is ON. |
 
 ---
 
@@ -116,7 +116,8 @@ dcbot-bitores-mendez/
 ├── src/
 │   ├── index.js                 # App Entry Point - initializes client & event loops
 │   ├── commands/                # Bot command categories
-│   │   ├── music/               # Music subcommand group
+│   │   ├── music/               # Music commands (direct top-level execution)
+│   │   │   ├── anorm.js         # Audio Normalizer toggle
 │   │   │   ├── insert.js        # Insert track/playlist next up
 │   │   │   ├── join.js          # Join voice channel
 │   │   │   ├── leave.js         # Leave voice channel
@@ -139,6 +140,7 @@ dcbot-bitores-mendez/
 │   │       ├── playerManager.js # Manages music player instances across guilds
 │   │       ├── musicPlayer.js   # Handles player state, queues, voice connections
 │   │       ├── trackResolver.js # Resolves URLs & searches YouTube/Spotify
+│   │       ├── audioNormalizer.js # LUFS-based audio normalization engine
 │   │       └── lyricsService.js # Fetches lyrics from lrclib.net
 │   ├── events/                  # Event listeners mapped by category
 │   │   ├── client/
@@ -147,7 +149,7 @@ dcbot-bitores-mendez/
 │   │       ├── interactionCreate.js # Interactive button clicks
 │   │       └── messageCreate.js # Prefix command parsing
 │   ├── handlers/                # Dynamic loaders
-│   │   ├── commandHandler.js    # Registers commands & nested subcommands
+│   │   ├── commandHandler.js    # Registers commands dynamically as top-level commands
 │   │   └── eventHandler.js      # Registers events dynamically
 │   ├── config/                  # Configuration loaders
 │   │   └── index.js             # Parses, validates, and freezes config variables
@@ -167,7 +169,7 @@ dcbot-bitores-mendez/
 ## 🧩 Extension Guide
 
 ### Adding a New Command
-To add a new command, simply create a `.js` file inside `src/commands/<category>/`:
+To add a new command, create a `.js` file inside any subfolder under `src/commands/` (e.g., `src/commands/utility/hello.js`):
 ```javascript
 const name = "hello";
 const description = "Replies with a friendly greeting";
@@ -178,21 +180,7 @@ const execute = async (message, args) => {
 
 export default { name, description, execute };
 ```
-The command loader will register it automatically on the next startup.
-
-### Adding a Subcommand
-If you want to group subcommands together (similar to `bm!music <subcommand>`), place the file in the group folder (e.g. `src/commands/music/`) and export `subcommand: true`:
-```javascript
-const name = "volume";
-const description = "Adjusts playback volume";
-const subcommand = true;
-
-const execute = async (message, args) => {
-    // Volume adjustments logic here
-};
-
-export default { name, description, subcommand, execute };
-```
+The command loader will automatically register it as a top-level command on the next startup.
 
 ### Adding a New Event
 Create a `.js` file inside `src/events/<category>/`:

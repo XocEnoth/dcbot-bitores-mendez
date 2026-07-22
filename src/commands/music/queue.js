@@ -5,12 +5,16 @@ import { EmbedBuilder } from 'discord.js';
 
 const name = 'queue';
 const description = 'Display the track queue';
-const subcommand = true;
 
+/**
+ * Executes the queue command to render the current track queue embed.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ */
 const execute = async (message) => {
   const player = playerManager.getPlayer(message.guild.id);
   if (!player || player.queue.length === 0) {
-    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`📜 The queue is empty. Use \`${config.prefix}music play <track>\` to add tracks.`)] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`📜 The queue is empty. Use \`${config.prefix}play <track>\` to add tracks.`)] });
   }
 
   const totalPages = Math.ceil(player.queue.length / TRACKS_PER_PAGE);
@@ -25,4 +29,4 @@ const execute = async (message) => {
   // by interactionCreate.js. This prevents the 'Interaction has already been acknowledged' bug.
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };

@@ -7,8 +7,13 @@ import logger from '../../utils/logger.js';
 
 const name = 'play';
 const description = 'Play a track from YouTube or Spotify';
-const subcommand = true;
 
+/**
+ * Executes the play command to search and queue audio tracks or playlists.
+ *
+ * @param {import('discord.js').Message} message - The Discord message object.
+ * @param {string[]} args - Command arguments.
+ */
 const execute = async (message, args) => {
   const voiceChannel = message.member.voice.channel;
   if (!voiceChannel) {
@@ -29,7 +34,7 @@ const execute = async (message, args) => {
 
   const query = args.join(' ');
   if (!query) {
-    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Please enter a search query or URL.\nExample: \`${config.prefix}music play never gonna give you up\` or \`${config.prefix}music play <playlist_url> 2\``)] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Please enter a search query or URL.\nExample: \`${config.prefix}play never gonna give you up\` or \`${config.prefix}play <playlist_url> 2\``)] });
   }
 
   const permissions = voiceChannel.permissionsFor(message.client.user);
@@ -101,4 +106,4 @@ const execute = async (message, args) => {
   }
 };
 
-export default { name, description, subcommand, execute };
+export default { name, description, execute };
