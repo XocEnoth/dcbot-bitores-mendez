@@ -64,6 +64,7 @@ class MusicPlayer {
     this._currentProcess = null;
     this._ffmpegProcess = null;
     this._consecutiveFailures = 0;
+    this._playbackInterval = null;
   }
 
   async connect(voiceChannel, textChannel) {
@@ -143,6 +144,7 @@ class MusicPlayer {
       await this.playNext();
     } else {
       this._preNormalizeNext();
+      this.updateNowPlayingMessage();
     }
   }
 
@@ -156,6 +158,7 @@ class MusicPlayer {
       await this.playNext();
     } else {
       this._preNormalizeNext();
+      this.updateNowPlayingMessage();
     }
   }
 
@@ -309,6 +312,7 @@ class MusicPlayer {
       this._consecutiveFailures = 0; // Reset on successful play
 
       await this._sendNowPlaying();
+      this._startPlaybackInterval();
       this._preNormalizeNext();
     } catch (error) {
       logger.error(`Failed to play: ${track.title}`, error);
@@ -323,6 +327,7 @@ class MusicPlayer {
     if (this.isPlaying && !this.isPaused) {
       this.player.pause();
       this.isPaused = true;
+      this.updateNowPlayingMessage();
       return true;
     }
     return false;
@@ -332,6 +337,7 @@ class MusicPlayer {
     if (this.isPaused) {
       this.player.unpause();
       this.isPaused = false;
+      this.updateNowPlayingMessage();
       return true;
     }
     return false;
@@ -418,9 +424,9 @@ class MusicPlayer {
     }
   }
 
-  async _sendNowPlaying() {
+  _buildNowPlayingPayload() {
     const track = this.currentTrack;
-    if (!track || !this.textChannel) return;
+    if (!track || !this.textChannel) return null;
 
     const requesterId = track.requester ? track.requester.id : this.textChannel.client.user.id;
     
@@ -432,17 +438,39 @@ class MusicPlayer {
       if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
-    const duration = track.duration > 0 ? formatCompact(track.duration) : track.durationRaw || "00:00";
-    const progressBar = `\`00:00\` [🔘▬▬▬▬▬▬▬▬▬▬] \`${duration}\``;
+    const durationRaw = track.duration > 0 ? formatCompact(track.duration) : track.durationRaw || "00:00";
+    
+    let currentMs = 0;
+    if (this.player?.state?.resource) {
+      currentMs = this.player.state.resource.playbackDuration;
+    }
+    const currentRaw = formatCompact(currentMs);
+
+    let progressBar = `[🔘▬▬▬▬▬▬▬▬▬▬]`;
+    if (track.duration > 0) {
+      const totalTicks = 10;
+      const progress = Math.min(1, Math.max(0, currentMs / track.duration));
+      let dotIndex = Math.round(progress * totalTicks);
+      if (dotIndex > totalTicks) dotIndex = totalTicks;
+      
+      let bar = '';
+      for (let i = 0; i <= totalTicks; i++) {
+        if (i === dotIndex) bar += '🔘';
+        else bar += '▬';
+      }
+      progressBar = `[${bar}]`;
+    }
+
+    const progressString = `\`${currentRaw}\` ${progressBar} \`${durationRaw}\``;
 
     const embed = new EmbedBuilder()
       .setColor(config.embedColor)
       .setTitle(truncate(track.title, 256))
       .setURL(track.url)
-      .setDescription(`> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n> **Playing in:** <#${this.voiceChannel.id}>\n\n${progressBar}`)
+      .setDescription(`> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n> **Playing in:** <#${this.voiceChannel.id}>\n\n${progressString}`)
       .addFields(
         { name: 'Volume', value: '100%', inline: true },
-        { name: 'Duration', value: duration, inline: true },
+        { name: 'Duration', value: durationRaw, inline: true },
         { name: 'Queue', value: `${this.upcomingTracks.length} Songs`, inline: true }
       )
       .setFooter({ text: `${this.textChannel.client.user.username} v${config.version}` })
@@ -452,10 +480,15 @@ class MusicPlayer {
       embed.setImage(track.thumbnail);
     }
 
+    const playPauseBtn = new ButtonBuilder()
+      .setCustomId('music_playpause')
+      .setEmoji(this.isPaused ? '▶️' : '⏸️')
+      .setStyle(this.isPaused ? ButtonStyle.Success : ButtonStyle.Primary);
+
     const row1 = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_rewind').setEmoji('⏪').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music_playpause').setEmoji('⏸️').setStyle(ButtonStyle.Primary),
+      playPauseBtn,
       new ButtonBuilder().setCustomId('music_forward').setEmoji('⏩').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary)
     );
@@ -470,22 +503,35 @@ class MusicPlayer {
 
     const row3 = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('music_voldown').setEmoji('🔉').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('music_mute').setEmoji('🔇').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music_mute').setEmoji('🔇').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_volup').setEmoji('🔊').setStyle(ButtonStyle.Secondary)
     );
 
+    return { embeds: [embed], components: [row1, row2, row3] };
+  }
+
+  async updateNowPlayingMessage() {
+    if (this.nowPlayingMessage) {
+      const payload = this._buildNowPlayingPayload();
+      if (payload) {
+        try {
+          await this.nowPlayingMessage.edit(payload);
+        } catch {}
+      }
+    }
+  }
+
+  async _sendNowPlaying() {
     // Delete old now playing message
     try {
       await this.nowPlayingMessage?.delete().catch(() => {});
-    } catch {
-      // Ignore if already deleted
-    }
+    } catch {}
+
+    const payload = this._buildNowPlayingPayload();
+    if (!payload) return;
 
     try {
-      this.nowPlayingMessage = await this.textChannel.send({
-        embeds: [embed],
-        components: [row1, row2, row3],
-      });
+      this.nowPlayingMessage = await this.textChannel.send(payload);
     } catch (error) {
       logger.error('Failed to send now playing message', error);
     }
@@ -574,6 +620,8 @@ class MusicPlayer {
     this.nowPlayingMessage = null;
     this._clearIdleTimeout();
 
+    this._stopPlaybackInterval();
+
     if (this._preNormalizeAbortController) {
       try {
         this._preNormalizeAbortController.abort();
@@ -583,6 +631,22 @@ class MusicPlayer {
 
     if (this.onDestroy) {
       this.onDestroy(this.guildId);
+    }
+  }
+
+  _startPlaybackInterval() {
+    this._stopPlaybackInterval();
+    this._playbackInterval = setInterval(() => {
+      if (this.isPlaying && !this.isPaused) {
+        this.updateNowPlayingMessage();
+      }
+    }, 10000); // 10 seconds
+  }
+
+  _stopPlaybackInterval() {
+    if (this._playbackInterval) {
+      clearInterval(this._playbackInterval);
+      this._playbackInterval = null;
     }
   }
 }

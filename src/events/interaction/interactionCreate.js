@@ -47,17 +47,10 @@ const execute = async (interaction) => {
       case 'music_playpause':
         if (player.isPaused) {
           player.resume();
-          await interaction.reply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('▶ Playback resumed.')],
-            flags: MessageFlags.Ephemeral,
-          });
         } else {
           player.pause();
-          await interaction.reply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⏸ Playback paused.')],
-            flags: MessageFlags.Ephemeral,
-          });
         }
+        await interaction.deferUpdate().catch(() => {});
         break;
 
       case 'music_skip': {
