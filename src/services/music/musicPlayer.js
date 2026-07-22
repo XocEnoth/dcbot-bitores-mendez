@@ -423,18 +423,30 @@ class MusicPlayer {
     if (!track || !this.textChannel) return;
 
     const requesterId = track.requester ? track.requester.id : this.textChannel.client.user.id;
-    const duration = track.durationRaw || formatDuration(track.duration);
-    const progressBar = `\`00:00:00\` [🔘──────────────] \`${duration}\``;
+    
+    const formatCompact = (ms) => {
+      const totalSeconds = Math.floor(ms / 1000);
+      const h = Math.floor(totalSeconds / 3600);
+      const m = Math.floor((totalSeconds % 3600) / 60);
+      const s = totalSeconds % 60;
+      if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+    const duration = track.duration > 0 ? formatCompact(track.duration) : track.durationRaw || "00:00";
+    const progressBar = `\`00:00\` [🔘▬▬▬▬▬▬▬▬▬▬▬▬▬▬] \`${duration}\``;
 
     const embed = new EmbedBuilder()
       .setColor(config.embedColor)
       .setTitle(truncate(track.title, 256))
-      .setDescription(`> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n\n${progressBar}`)
+      .setURL(track.url)
+      .setDescription(`> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n> **Playing in:** <#${this.voiceChannel.id}>\n\n${progressBar}`)
       .addFields(
         { name: 'Volume', value: '100%', inline: true },
         { name: 'Duration', value: duration, inline: true },
         { name: 'Queue', value: `${this.upcomingTracks.length} Songs`, inline: true }
-      );
+      )
+      .setFooter({ text: `${this.textChannel.client.user.username} v${config.version}` })
+      .setTimestamp();
 
     if (track.thumbnail) {
       embed.setImage(track.thumbnail);
@@ -452,7 +464,7 @@ class MusicPlayer {
       new ButtonBuilder().setCustomId('music_repeat').setEmoji('🔁').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('music_save').setEmoji('💾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_queue').setEmoji('📑').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_lyrics').setEmoji('📜').setStyle(ButtonStyle.Secondary)
     );
 
