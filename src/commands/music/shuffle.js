@@ -22,26 +22,34 @@ const execute = async (message) => {
   }
 
   const args = message.content.split(' ').slice(1);
-  let forceState = null;
+
 
   if (voiceChannel.id !== player.voiceChannel?.id) {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  if (args.length > 0) {
-    const arg = args[0].toLowerCase();
-    if (arg === 'on') {
-      forceState = true;
-    } else if (arg === 'off') {
-      forceState = false;
-    } else {
-      return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ Invalid argument. Please use \`${config.prefix}shuffle on\` or \`${config.prefix}shuffle off\`.`)] });
+  const mode = args[0]?.toLowerCase();
+
+  if (mode === 'on') {
+    if (player.isShuffle) {
+      return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Shuffle mode is already enabled.')] });
     }
+    player.shuffle(true);
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔀 Shuffle mode has been **enabled**. The next track will be randomly selected from the remaining queue.')] });
   }
 
-  const isEnabled = player.shuffle(forceState);
-  const status = isEnabled ? '**Enabled** 🔀' : '**Disabled** ❌';
-  await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔀 Shuffle mode status: ${status}`)] });
+  if (mode === 'off') {
+    if (!player.isShuffle) {
+      return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Shuffle mode is already disabled.')] });
+    }
+    player.shuffle(false);
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔀 Shuffle mode has been **disabled**. Playback will continue in sequential order.')] });
+  }
+
+  const status = player.isShuffle ? '**Enabled** ✅' : '**Disabled** ❌';
+  await message.reply({
+    embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔀 Shuffle mode status: ${status}\nUse \`${config.prefix}shuffle on\` or \`${config.prefix}shuffle off\` to change it.`)]
+  });
 };
 
 export default { name, description, execute };
