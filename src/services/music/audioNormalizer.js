@@ -123,16 +123,29 @@ function measureSample(trackUrl, signal) {
     const ytProc = youtubeDl.exec(trackUrl, ytDlpOptions);
     ytProc.catch(() => {}); // Prevent unhandled rejections if yt-dlp fails
 
+    const cleanup = () => {
+      clearTimeout(timeout);
+      if (signal) signal.removeEventListener('abort', abortHandler);
+      try {
+        if (!ytProc.killed) ytProc.kill('SIGKILL');
+      } catch {}
+      try {
+        if (proc && !proc.killed) proc.kill('SIGKILL');
+      } catch {}
+    };
+
     const abortHandler = () => {
       cleanup();
       reject(new Error('aborted'));
     };
-    const cleanup = () => {
-      clearTimeout(timeout);
-      try {
-        ytProc.kill('SIGTERM'); // Terminate yt-dlp to save bandwidth
-      } catch {}
-    };
+
+    if (signal) {
+      if (signal.aborted) {
+        abortHandler();
+        return;
+      }
+      signal.addEventListener('abort', abortHandler);
+    }
 
     const done = (lufs) => {
       if (resolved) return;
@@ -186,7 +199,8 @@ function measureSample(trackUrl, signal) {
 
     // Safety timeout: if FFmpeg or yt-dlp hangs, don't block playback
     const timeout = setTimeout(() => {
-      try { proc.kill('SIGTERM'); } catch {}
+      try { if (proc && !proc.killed) proc.kill('SIGKILL'); } catch {}
+      try { if (!ytProc.killed) ytProc.kill('SIGKILL'); } catch {}
       done(TARGET_LUFS); // On timeout, proceed with no adjustment
     }, MEASURE_TIMEOUT_MS);
   });

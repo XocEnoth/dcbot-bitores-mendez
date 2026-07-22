@@ -142,25 +142,7 @@ class MusicPlayer {
       this.currentIndex = startIndex - 1;
       await this.playNext();
     } else {
-      this.preNormalizeNext().catch(() => {});
-    }
-  }
-
-  /**
-   * Pre-normalize the next track in the queue in the background.
-   * This ensures the gain is already calculated when the track starts playing.
-   */
-  async preNormalizeNext() {
-    if (!this.isNormalizerEnabled) return;
-    if (this.queue.length === 0) return;
-    const nextTrack = this.queue[0];
-    if (!nextTrack || nextTrack.duration <= 0) return;
-    
-    try {
-      logger.info(`[Player] Pre-normalizing next track in background: ${nextTrack.title}`);
-      await audioNormalizer.measure(nextTrack);
-    } catch (err) {
-      // Ignore errors, it will retry or skip during playNext
+      this._preNormalizeNext();
     }
   }
 
@@ -258,10 +240,7 @@ class MusicPlayer {
         throw new Error('Failed to create audio stream');
       }
 
-      // Pre-normalize the next track in the background for a seamless transition
-      this.preNormalizeNext().catch(err => {
-        logger.warn(`Failed to pre-normalize next track: ${err.message}`);
-      });
+      // Background pre-normalization is triggered at the end of this function
 
       // ================================================================
       // Phase 3: FFmpeg Normalization Pipeline
@@ -426,19 +405,15 @@ class MusicPlayer {
     // Kill yt-dlp subprocess
     if (this._currentProcess) {
       try {
-        this._currentProcess.kill('SIGTERM');
-      } catch {
-        // Process may have already exited
-      }
+        if (!this._currentProcess.killed) this._currentProcess.kill('SIGKILL');
+      } catch {}
       this._currentProcess = null;
     }
     // Kill FFmpeg normalizer subprocess
     if (this._ffmpegProcess) {
       try {
-        this._ffmpegProcess.kill('SIGTERM');
-      } catch {
-        // Process may have already exited
-      }
+        if (!this._ffmpegProcess.killed) this._ffmpegProcess.kill('SIGKILL');
+      } catch {}
       this._ffmpegProcess = null;
     }
   }
