@@ -136,11 +136,8 @@ const execute = async (interaction) => {
 
       case 'music_repeat': {
         player.isRepeat = !player.isRepeat;
-        const status = player.isRepeat ? '**Enabled** 🔁' : '**Disabled** ❌';
-        await interaction.reply({
-          embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`🔁 Repeat mode status: ${status}`)],
-          flags: MessageFlags.Ephemeral,
-        });
+        player.updateNowPlayingMessage();
+        await interaction.deferUpdate().catch(() => {});
         break;
       }
 
