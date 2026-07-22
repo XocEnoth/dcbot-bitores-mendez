@@ -433,7 +433,7 @@ class MusicPlayer {
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
     const duration = track.duration > 0 ? formatCompact(track.duration) : track.durationRaw || "00:00";
-    const progressBar = `\`00:00\` [🔘▬▬▬▬▬▬▬▬▬▬▬▬▬▬] \`${duration}\``;
+    const progressBar = `\`00:00\` [🔘▬▬▬▬▬▬▬▬▬▬] \`${duration}\``;
 
     const embed = new EmbedBuilder()
       .setColor(config.embedColor)
