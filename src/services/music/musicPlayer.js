@@ -450,7 +450,7 @@ class MusicPlayer {
     if (track.duration > 0) {
       const totalTicks = 10;
       const progress = Math.min(1, Math.max(0, currentMs / track.duration));
-      let dotIndex = Math.round(progress * totalTicks);
+      let dotIndex = Math.floor(progress * totalTicks);
       if (dotIndex > totalTicks) dotIndex = totalTicks;
       
       let bar = '';
@@ -640,7 +640,7 @@ class MusicPlayer {
       if (this.isPlaying && !this.isPaused) {
         this.updateNowPlayingMessage();
       }
-    }, 10000); // 10 seconds
+    }, 5000); // 5 seconds
   }
 
   _stopPlaybackInterval() {
