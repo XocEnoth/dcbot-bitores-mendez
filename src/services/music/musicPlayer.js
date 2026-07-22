@@ -429,13 +429,14 @@ class MusicPlayer {
     if (!track || !this.textChannel) return null;
 
     const requesterId = track.requester ? track.requester.id : this.textChannel.client.user.id;
+    const hasHours = track.duration >= 3600000;
     
     const formatCompact = (ms) => {
       const totalSeconds = Math.floor(ms / 1000);
       const h = Math.floor(totalSeconds / 3600);
       const m = Math.floor((totalSeconds % 3600) / 60);
       const s = totalSeconds % 60;
-      if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      if (hasHours) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
     const durationRaw = track.duration > 0 ? formatCompact(track.duration) : track.durationRaw || "00:00";
