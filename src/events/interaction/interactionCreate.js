@@ -8,7 +8,10 @@ import logger from '../../utils/logger.js';
 
 const name = 'interactionCreate';
 
-const MUSIC_BUTTONS = ['music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_repeat', 'music_lyrics', 'music_stop_confirm', 'music_stop_cancel'];
+const MUSIC_BUTTONS = [
+  'music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_repeat', 'music_lyrics', 'music_stop_confirm', 'music_stop_cancel',
+  'music_prev', 'music_rewind', 'music_forward', 'music_save', 'music_voldown', 'music_mute', 'music_volup'
+];
 
 const execute = async (interaction) => {
   if (!interaction.isButton()) return;
@@ -208,6 +211,13 @@ const execute = async (interaction) => {
         }
         break;
       }
+
+      default:
+        await interaction.reply({
+          embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ This feature will be implemented soon.')],
+          flags: MessageFlags.Ephemeral,
+        });
+        break;
     }
 
     if (interaction.customId.startsWith('music_queuepage_')) {

@@ -66,6 +66,8 @@ const execute = async (message, args) => {
       return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No results found for that search query.')] });
     }
 
+    tracks.forEach(t => t.requester = message.author);
+
     await new Promise(r => setTimeout(r, 1000)); // Prevent Discord edit race condition
     await player.addTracks(tracks);
 

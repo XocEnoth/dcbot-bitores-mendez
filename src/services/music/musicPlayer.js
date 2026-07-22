@@ -422,54 +422,44 @@ class MusicPlayer {
     const track = this.currentTrack;
     if (!track || !this.textChannel) return;
 
+    const requesterId = track.requester ? track.requester.id : this.textChannel.client.user.id;
+    const duration = track.durationRaw || formatDuration(track.duration);
+    const progressBar = `\`00:00:00\` [🔘──────────────] \`${duration}\``;
+
     const embed = new EmbedBuilder()
       .setColor(config.embedColor)
-      .setTitle('🎶 Now Playing')
+      .setTitle(truncate(track.title, 256))
+      .setDescription(`> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n\n${progressBar}`)
       .addFields(
-        { name: 'Song', value: truncate(track.title, 60), inline: true },
-        { name: 'Artist', value: truncate(track.author, 40), inline: true },
-        { name: 'Duration', value: track.durationRaw || formatDuration(track.duration), inline: true },
-        { name: 'Status', value: this.isRepeat ? '🔁 Repeating' : '▶ Playing', inline: true },
-      )
-      .setFooter({ text: `Queue: ${this.upcomingTracks.length} more song(s)${this.isRepeat ? ' | 🔁 Repeat On' : ''} | 🎚️ Audio Normalizer: ${this.isNormalizerEnabled ? 'ON' : 'OFF'}` })
-      .setTimestamp();
+        { name: 'Volume', value: '100%', inline: true },
+        { name: 'Duration', value: duration, inline: true },
+        { name: 'Queue', value: `${this.upcomingTracks.length} Songs`, inline: true }
+      );
 
     if (track.thumbnail) {
-      embed.setThumbnail(track.thumbnail);
+      embed.setImage(track.thumbnail);
     }
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('music_playpause')
-        .setLabel('Play/Pause')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('music_shuffle')
-        .setLabel('Shuffle')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_repeat')
-        .setLabel('Repeat')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_skip')
-        .setLabel('Skip')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_stop')
-        .setLabel('Stop')
-        .setStyle(ButtonStyle.Danger),
+    const row1 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('music_prev').setEmoji('⏮️').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_rewind').setEmoji('⏪').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_playpause').setEmoji('⏸️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('music_forward').setEmoji('⏩').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_skip').setEmoji('⏭️').setStyle(ButtonStyle.Secondary)
     );
 
     const row2 = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('music_lyrics')
-        .setLabel('Show Lyrics')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('music_queue')
-        .setLabel('Show Queue')
-        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_repeat').setEmoji('🔁').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music_save').setEmoji('💾').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_lyrics').setEmoji('📜').setStyle(ButtonStyle.Secondary)
+    );
+
+    const row3 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId('music_voldown').setEmoji('🔉').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_mute').setEmoji('🔇').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('music_volup').setEmoji('🔊').setStyle(ButtonStyle.Secondary)
     );
 
     // Delete old now playing message
@@ -482,7 +472,7 @@ class MusicPlayer {
     try {
       this.nowPlayingMessage = await this.textChannel.send({
         embeds: [embed],
-        components: [row, row2],
+        components: [row1, row2, row3],
       });
     } catch (error) {
       logger.error('Failed to send now playing message', error);
