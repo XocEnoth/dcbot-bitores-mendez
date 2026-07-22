@@ -98,19 +98,9 @@ const execute = async (interaction) => {
         break;
 
       case 'music_queue': {
-        if (player.queue.length === 0) {
-          return interaction.reply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('📜 The queue is empty.')],
-            flags: MessageFlags.Ephemeral,
-          });
-        }
-
-        const totalPages = Math.ceil(player.queue.length / TRACKS_PER_PAGE);
-        await interaction.reply({
-          embeds: [buildQueueEmbed(player, 0)],
-          components: totalPages > 1 ? [buildQueueButtons(player, 0)] : [],
-          flags: MessageFlags.Ephemeral,
-        });
+        player.isQueueVisible = !player.isQueueVisible;
+        player.updateNowPlayingMessage();
+        await interaction.deferUpdate().catch(() => {});
         break;
       }
 

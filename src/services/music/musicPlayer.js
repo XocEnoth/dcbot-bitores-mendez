@@ -57,6 +57,7 @@ class MusicPlayer {
     this.is247 = false;
     this.isRepeat = false;
     this.isShuffle = false;
+    this.isQueueVisible = false;
     this.isNormalizerEnabled = true;
     this.nowPlayingMessage = null;
     this.idleTimeout = null;
@@ -509,7 +510,7 @@ class MusicPlayer {
       new ButtonBuilder().setCustomId('music_repeat').setEmoji('🔁').setStyle(this.isRepeat ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_shuffle').setEmoji('🔀').setStyle(this.isShuffle ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_stop').setEmoji('⏹️').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('music_queue').setEmoji('📑').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('music_queue').setEmoji('📑').setStyle(this.isQueueVisible ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('music_lyrics').setEmoji('📜').setStyle(ButtonStyle.Secondary)
     );
 
@@ -519,7 +520,29 @@ class MusicPlayer {
       new ButtonBuilder().setCustomId('music_volup').setEmoji('🔊').setStyle(ButtonStyle.Secondary)
     );
 
-    return { embeds: [embed], components: [row1, row2, row3] };
+    const embeds = [embed];
+
+    if (this.isQueueVisible) {
+      let queueText = `**🎵 1.** [${truncate(track.title, 50)}](${track.url}) - \`[NOW PLAYING]\`\n`;
+      const upcoming = this.upcomingTracks.slice(0, 4);
+      upcoming.forEach((t, i) => {
+        queueText += `**${i + 2}.** [${truncate(t.title, 50)}](${t.url})\n`;
+      });
+      
+      if (this.upcomingTracks.length > 4) {
+        queueText += `\n*...and ${this.upcomingTracks.length - 4} more tracks*`;
+      } else if (upcoming.length === 0) {
+        queueText += `\n*No upcoming tracks in queue.*`;
+      }
+
+      const queueEmbed = new EmbedBuilder()
+        .setColor(config.embedColor)
+        .setDescription(queueText);
+      
+      embeds.push(queueEmbed);
+    }
+
+    return { embeds, components: [row1, row2, row3] };
   }
 
   async updateNowPlayingMessage() {
