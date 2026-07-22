@@ -143,6 +143,10 @@ class MusicPlayer {
     const startIndex = this.queue.length;
     this.queue.push(...tracks);
 
+    if (this.isShuffle) {
+      this._shuffleUpcoming();
+    }
+
     if (!this.isPlaying) {
       this.currentIndex = startIndex - 1;
       await this.playNext();
@@ -173,16 +177,6 @@ class MusicPlayer {
     this._clearIdleTimeout();
 
     if (!replay) {
-      if (this.isShuffle && this.currentIndex + 1 < this.queue.length) {
-        const remainingStartIndex = this.currentIndex + 1;
-        const remainingLength = this.queue.length - remainingStartIndex;
-        const randomIndex = remainingStartIndex + Math.floor(Math.random() * remainingLength);
-        
-        // Swap with the next index so it gets played next
-        const temp = this.queue[remainingStartIndex];
-        this.queue[remainingStartIndex] = this.queue[randomIndex];
-        this.queue[randomIndex] = temp;
-      }
       this.currentIndex++;
     }
 
@@ -377,6 +371,23 @@ class MusicPlayer {
     }
   }
 
+  _shuffleUpcoming() {
+    if (this.queue.length <= this.currentIndex + 2) return;
+    
+    const upcoming = this.queue.slice(this.currentIndex + 1);
+    
+    // Fisher-Yates shuffle
+    for (let i = upcoming.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
+    }
+    
+    this.queue = [
+      ...this.queue.slice(0, this.currentIndex + 1),
+      ...upcoming
+    ];
+  }
+
   /**
    * Toggles or sets the shuffle mode.
    * When enabled, the next track is randomly selected from the remaining queue.
@@ -390,6 +401,12 @@ class MusicPlayer {
     } else {
       this.isShuffle = !this.isShuffle;
     }
+    
+    if (this.isShuffle) {
+      this._shuffleUpcoming();
+      this._preNormalizeNext();
+    }
+
     this.updateNowPlayingMessage();
     return this.isShuffle;
   }
