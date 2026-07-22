@@ -67,7 +67,7 @@ Music:
 - ${config.prefix}leave : Disconnects the bot from the voice channel and cleans up resources.
 - ${config.prefix}join : Joins the voice channel without playing any tracks immediately.
 - ${config.prefix}queue : Displays the current music queue with interactive pagination buttons.
-- ${config.prefix}shuffle : Shuffles the upcoming tracks in the queue.
+- ${config.prefix}shuffle : Toggles shuffle mode on or off.
 - ${config.prefix}repeat [on / off] : Toggles repeat mode for the current track. When enabled, the current track will loop until repeat is turned off.
 - ${config.prefix}247 [on / off] : Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle.
 - ${config.prefix}anorm [on / off] : Toggles Audio Normalizer on or off for the current server.`;
