@@ -332,9 +332,11 @@ class MusicPlayer {
             // This matches discord.js StreamType.Raw, which only needs Opus encoding
             // (done efficiently by opusscript) — no additional FFmpeg decode step.
             const isLive = !track.duration || track.duration <= 0;
-            const audioFilter = this.isNormalizerEnabled ? (isLive
-                ? "loudnorm=I=-14:LRA=11:TP=-1.5" // Real-time normalization for live
-                : `volume=${gainDb}dB`) : null; // Static gain for recorded tracks
+            const audioFilter = this.isNormalizerEnabled
+                ? isLive
+                    ? "loudnorm=I=-14:LRA=11:TP=-1.5" // Real-time normalization for live
+                    : `volume=${gainDb}dB`
+                : null; // Static gain for recorded tracks
 
             const ffmpegArgs = [
                 "-i",
@@ -355,11 +357,9 @@ class MusicPlayer {
                 "pipe:1", // Output to stdout
             );
 
-            const ffmpegProc = spawn(
-                ffmpegPath,
-                ffmpegArgs,
-                { stdio: ["pipe", "pipe", "pipe"] },
-            );
+            const ffmpegProc = spawn(ffmpegPath, ffmpegArgs, {
+                stdio: ["pipe", "pipe", "pipe"],
+            });
 
             this._ffmpegProcess = ffmpegProc;
 
@@ -393,9 +393,9 @@ class MusicPlayer {
             // and only needs Opus encoding (no additional FFmpeg decode step)
             const resource = createAudioResource(ffmpegProc.stdout, {
                 inputType: StreamType.Raw,
-                inlineVolume: true
+                inlineVolume: true,
             });
-            
+
             resource.volume.setVolume(this.isMuted ? 0 : this.volume / 100);
 
             this.player.play(resource);
@@ -477,7 +477,7 @@ class MusicPlayer {
         this.isMuted = !this.isMuted;
         this._applyVolume();
     }
-    
+
     toggleNormalizer() {
         this.isNormalizerEnabled = !this.isNormalizerEnabled;
         this.updateNowPlayingMessage();
@@ -662,9 +662,21 @@ class MusicPlayer {
                 `> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n> **Playing in:** <#${this.voiceChannel.id}>\n\n${progressString}`,
             )
             .addFields(
-                { name: "Duration", value: formatDuration(track.duration), inline: true },
-                { name: "Author", value: track.author, inline: true },
-                { name: "Volume", value: this.isMuted ? "🔇 Muted" : `${this.volume}%`, inline: true },
+                {
+                    name: "Volume",
+                    value: this.isMuted ? "🔇 Muted" : `${this.volume}%`,
+                    inline: true,
+                },
+                {
+                    name: "Duration",
+                    value: formatDuration(track.duration),
+                    inline: true,
+                },
+                {
+                    name: "Queue",
+                    value: `${this.queue.length} Songs`,
+                    inline: true,
+                },
             )
             .setFooter({
                 text: `${this.textChannel.client.user.username} v${config.version}`,
@@ -753,7 +765,9 @@ class MusicPlayer {
             new ButtonBuilder()
                 .setCustomId("music_mute")
                 .setEmoji("🔇")
-                .setStyle(this.isMuted ? ButtonStyle.Success : ButtonStyle.Secondary),
+                .setStyle(
+                    this.isMuted ? ButtonStyle.Success : ButtonStyle.Secondary,
+                ),
             new ButtonBuilder()
                 .setCustomId("music_volup")
                 .setEmoji("🔊")
@@ -762,7 +776,11 @@ class MusicPlayer {
             new ButtonBuilder()
                 .setCustomId("music_anorm")
                 .setEmoji("🎚️")
-                .setStyle(this.isNormalizerEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
+                .setStyle(
+                    this.isNormalizerEnabled
+                        ? ButtonStyle.Success
+                        : ButtonStyle.Secondary,
+                ),
         );
 
         const embeds = [embed];
@@ -786,8 +804,7 @@ class MusicPlayer {
 
             embeds.push(queueEmbed);
         } else if (this.isLyricsVisible) {
-            const lyricsText =
-                this.currentLyrics || "⏳ *Searching lyrics...*";
+            const lyricsText = this.currentLyrics || "⏳ *Searching lyrics...*";
             const lyricsEmbed = new EmbedBuilder()
                 .setColor(config.embedColor)
                 .setTitle("🎵 Lyrics")
@@ -812,7 +829,7 @@ class MusicPlayer {
 
     async fetchLyricsIfVisible() {
         if (!this.isLyricsVisible || !this.currentTrack) return;
-        
+
         const track = this.currentTrack;
         const trackId = track.url || track.title;
 
@@ -822,15 +839,19 @@ class MusicPlayer {
         this.updateNowPlayingMessage();
 
         try {
-            const result = await lyricsService.searchLyrics(track.title, track.author);
-            
+            const result = await lyricsService.searchLyrics(
+                track.title,
+                track.author,
+            );
+
             // Abort if track changed or lyrics toggled off while fetching
             if (!this.isLyricsVisible || this.currentTrack !== track) return;
 
             if (result && result.lyrics) {
                 this.currentLyrics = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n${result.lyrics}`;
             } else {
-                this.currentLyrics = "❌ *No lyrics were found for this track.*";
+                this.currentLyrics =
+                    "❌ *No lyrics were found for this track.*";
             }
             this.currentLyricsTrackId = trackId;
             this.updateNowPlayingMessage();
@@ -891,8 +912,11 @@ class MusicPlayer {
             return;
         }
 
-        let shouldReplay = this.isRepeat && this.currentIndex >= 0 && this.currentIndex < this.queue.length;
-        
+        let shouldReplay =
+            this.isRepeat &&
+            this.currentIndex >= 0 &&
+            this.currentIndex < this.queue.length;
+
         if (this._forceSkip) {
             shouldReplay = false;
             this._forceSkip = false;
