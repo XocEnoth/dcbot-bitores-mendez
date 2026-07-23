@@ -686,20 +686,24 @@ class MusicPlayer {
             new ButtonBuilder()
                 .setCustomId("music_prev")
                 .setEmoji("⏮️")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(this.currentIndex <= 0),
             new ButtonBuilder()
                 .setCustomId("music_rewind")
                 .setEmoji("⏪")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(this.currentIndex <= 0),
             playPauseBtn,
             new ButtonBuilder()
                 .setCustomId("music_forward")
                 .setEmoji("⏩")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(this.currentIndex >= this.queue.length - 1),
             new ButtonBuilder()
                 .setCustomId("music_skip")
                 .setEmoji("⏭️")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(this.currentIndex >= this.queue.length - 1),
         );
 
         const row2 = new ActionRowBuilder().addComponents(
@@ -728,7 +732,8 @@ class MusicPlayer {
                     this.isQueueVisible
                         ? ButtonStyle.Success
                         : ButtonStyle.Secondary,
-                ),
+                )
+                .setDisabled(this.queue.length <= 1),
             new ButtonBuilder()
                 .setCustomId("music_lyrics")
                 .setEmoji("📜")
@@ -743,7 +748,8 @@ class MusicPlayer {
             new ButtonBuilder()
                 .setCustomId("music_voldown")
                 .setEmoji("🔉")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(this.volume <= 0),
             new ButtonBuilder()
                 .setCustomId("music_mute")
                 .setEmoji("🔇")
@@ -751,7 +757,8 @@ class MusicPlayer {
             new ButtonBuilder()
                 .setCustomId("music_volup")
                 .setEmoji("🔊")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(this.volume >= 200),
             new ButtonBuilder()
                 .setCustomId("music_anorm")
                 .setEmoji("🎚️")

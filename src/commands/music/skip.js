@@ -26,9 +26,12 @@ const execute = async (message) => {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  const title = truncate(player.currentTrack?.title, 50) || 'Unknown';
+  if (player.currentIndex >= player.queue.length - 1) {
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ There are no upcoming tracks in the queue to skip to.')] });
+  }
+
   await player.skip();
-  await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`⏭ Skipped **${title}**.`)] });
+  await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⏩ Skipped the current track.')] });
 };
 
 export default { name, description, execute };

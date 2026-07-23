@@ -25,11 +25,12 @@ const execute = async (message) => {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ You must be in the same voice channel as the bot.')] });
   }
 
-  if (player.resume()) {
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('▶ Playback resumed.')] });
-  } else {
-    await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ The player is not paused.')] });
+  if (!player.isPaused) {
+    return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ The player is not paused.')] });
   }
+
+  player.resume();
+  await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('▶️ Resumed the current track.')] });
 };
 
 export default { name, description, execute };
