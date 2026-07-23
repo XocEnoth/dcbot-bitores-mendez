@@ -23,6 +23,7 @@ import config from "../../config/index.js";
 import { formatDuration, truncate } from "../../utils/formatters.js";
 import logger from "../../utils/logger.js";
 import audioNormalizer from "./audioNormalizer.js";
+import lyricsService from "./lyricsService.js";
 
 const IDLE_TIMEOUT_MS = 300_000; // 5 minutes
 const CONNECTION_TIMEOUT_MS = 30_000; // 30 seconds
@@ -219,7 +220,6 @@ class MusicPlayer {
             if (this.currentTrack) {
                 this.currentTrack.played = true;
             }
-            this.isLyricsVisible = false;
             this.currentLyrics = null;
             this.currentLyricsTrackId = null;
         }
@@ -392,6 +392,7 @@ class MusicPlayer {
             await this._sendNowPlaying();
             this._startPlaybackInterval();
             this._preNormalizeNext();
+            this.fetchLyricsIfVisible();
         } catch (error) {
             logger.error(`Failed to play: ${track.title}`, error);
             await this.textChannel
@@ -744,6 +745,39 @@ class MusicPlayer {
                 try {
                     await this.nowPlayingMessage.edit(payload);
                 } catch {}
+            }
+        }
+    }
+
+    async fetchLyricsIfVisible() {
+        if (!this.isLyricsVisible || !this.currentTrack) return;
+        
+        const track = this.currentTrack;
+        const trackId = track.url || track.title;
+
+        if (this.currentLyricsTrackId === trackId) return;
+
+        this.currentLyrics = "⏳ *Searching lyrics...*";
+        this.updateNowPlayingMessage();
+
+        try {
+            const result = await lyricsService.searchLyrics(track.title, track.author);
+            
+            // Abort if track changed or lyrics toggled off while fetching
+            if (!this.isLyricsVisible || this.currentTrack !== track) return;
+
+            if (result && result.lyrics) {
+                this.currentLyrics = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n${result.lyrics}`;
+            } else {
+                this.currentLyrics = "❌ *No lyrics were found for this track.*";
+            }
+            this.currentLyricsTrackId = trackId;
+            this.updateNowPlayingMessage();
+        } catch (error) {
+            logger.error("Error fetching lyrics for inline embed", error);
+            if (this.isLyricsVisible && this.currentTrack === track) {
+                this.currentLyrics = "⚠️ *Failed to retrieve lyrics.*";
+                this.updateNowPlayingMessage();
             }
         }
     }

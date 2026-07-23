@@ -133,26 +133,8 @@ const execute = async (interaction) => {
           await interaction.deferUpdate().catch(() => {});
 
           const track = player.currentTrack;
-          const trackId = track.url || track.title;
-
-          if (player.currentLyricsTrackId !== trackId) {
-            player.currentLyrics = '⏳ *Searching lyrics...*';
-            player.updateNowPlayingMessage();
-
-            try {
-              const result = await lyricsService.searchLyrics(track.title, track.author);
-              if (result && result.lyrics) {
-                player.currentLyrics = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n${result.lyrics}`;
-              } else {
-                player.currentLyrics = '❌ *No lyrics were found for this track.*';
-              }
-              player.currentLyricsTrackId = trackId;
-            } catch (error) {
-              logger.error('Error fetching lyrics for inline embed', error);
-              player.currentLyrics = '⚠️ *Failed to retrieve lyrics.*';
-            }
-          }
-          player.updateNowPlayingMessage();
+          player.updateNowPlayingMessage(); // Update UI to show button state change
+          player.fetchLyricsIfVisible(); // Fetch lyrics asynchronously
         } else {
           player.updateNowPlayingMessage();
           await interaction.deferUpdate().catch(() => {});
