@@ -60,6 +60,9 @@ class MusicPlayer {
         this.isPaused = false;
         this._forceSkip = false;
         this.is247 = false;
+        this.volume = 100;
+        this.isMuted = false;
+        this.isNormalizerEnabled = true;
         this.isRepeat = false;
         this.isShuffle = false;
         this.isQueueVisible = false;
@@ -329,25 +332,32 @@ class MusicPlayer {
             // This matches discord.js StreamType.Raw, which only needs Opus encoding
             // (done efficiently by opusscript) — no additional FFmpeg decode step.
             const isLive = !track.duration || track.duration <= 0;
-            const audioFilter = isLive
+            const audioFilter = this.isNormalizerEnabled ? (isLive
                 ? "loudnorm=I=-14:LRA=11:TP=-1.5" // Real-time normalization for live
-                : `volume=${gainDb}dB`; // Static gain for recorded tracks
+                : `volume=${gainDb}dB`) : null; // Static gain for recorded tracks
+
+            const ffmpegArgs = [
+                "-i",
+                "pipe:0", // Read from stdin (piped from yt-dlp)
+            ];
+
+            if (audioFilter) {
+                ffmpegArgs.push("-af", audioFilter); // Audio filter: volume gain or loudnorm
+            }
+
+            ffmpegArgs.push(
+                "-f",
+                "s16le", // Output format: signed 16-bit little-endian PCM
+                "-ar",
+                "48000", // Sample rate: 48kHz (Discord standard)
+                "-ac",
+                "2", // Channels: stereo
+                "pipe:1", // Output to stdout
+            );
 
             const ffmpegProc = spawn(
                 ffmpegPath,
-                [
-                    "-i",
-                    "pipe:0", // Read from stdin (piped from yt-dlp)
-                    "-af",
-                    audioFilter, // Audio filter: volume gain or loudnorm
-                    "-f",
-                    "s16le", // Output format: signed 16-bit little-endian PCM
-                    "-ar",
-                    "48000", // Sample rate: 48kHz (Discord standard)
-                    "-ac",
-                    "2", // Channels: stereo
-                    "pipe:1", // Output to stdout
-                ],
+                ffmpegArgs,
                 { stdio: ["pipe", "pipe", "pipe"] },
             );
 
@@ -383,7 +393,10 @@ class MusicPlayer {
             // and only needs Opus encoding (no additional FFmpeg decode step)
             const resource = createAudioResource(ffmpegProc.stdout, {
                 inputType: StreamType.Raw,
+                inlineVolume: true
             });
+            
+            resource.volume.setVolume(this.isMuted ? 0 : this.volume / 100);
 
             this.player.play(resource);
             this.isPlaying = true;
@@ -448,6 +461,34 @@ class MusicPlayer {
         this._killProcess();
         this.player.stop(true);
         return true;
+    }
+
+    volumeUp() {
+        this.volume = Math.min(200, this.volume + 10);
+        this._applyVolume();
+    }
+
+    volumeDown() {
+        this.volume = Math.max(0, this.volume - 10);
+        this._applyVolume();
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        this._applyVolume();
+    }
+    
+    toggleNormalizer() {
+        this.isNormalizerEnabled = !this.isNormalizerEnabled;
+        this.updateNowPlayingMessage();
+    }
+
+    _applyVolume() {
+        if (this.player?.state?.resource?.volume) {
+            const targetVol = this.isMuted ? 0 : this.volume / 100;
+            this.player.state.resource.volume.setVolume(targetVol);
+        }
+        this.updateNowPlayingMessage();
     }
 
     async stop() {
@@ -621,13 +662,9 @@ class MusicPlayer {
                 `> **By:** ${truncate(track.author, 50)}\n> **Requested By:** <@${requesterId}>\n> **Playing in:** <#${this.voiceChannel.id}>\n\n${progressString}`,
             )
             .addFields(
-                { name: "Volume", value: "100%", inline: true },
-                { name: "Duration", value: durationRaw, inline: true },
-                {
-                    name: "Queue",
-                    value: `${this.upcomingTracks.length} Songs`,
-                    inline: true,
-                },
+                { name: "Duration", value: formatDuration(track.duration), inline: true },
+                { name: "Author", value: track.author, inline: true },
+                { name: "Volume", value: this.isMuted ? "🔇 Muted" : `${this.volume}%`, inline: true },
             )
             .setFooter({
                 text: `${this.textChannel.client.user.username} v${config.version}`,
@@ -710,11 +747,15 @@ class MusicPlayer {
             new ButtonBuilder()
                 .setCustomId("music_mute")
                 .setEmoji("🔇")
-                .setStyle(ButtonStyle.Secondary),
+                .setStyle(this.isMuted ? ButtonStyle.Success : ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("music_volup")
                 .setEmoji("🔊")
                 .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("music_anorm")
+                .setEmoji("🎚️")
+                .setStyle(this.isNormalizerEnabled ? ButtonStyle.Success : ButtonStyle.Secondary),
         );
 
         const embeds = [embed];

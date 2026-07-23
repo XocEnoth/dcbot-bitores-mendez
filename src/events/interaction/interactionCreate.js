@@ -10,7 +10,7 @@ const name = 'interactionCreate';
 
 const MUSIC_BUTTONS = [
   'music_playpause', 'music_skip', 'music_stop', 'music_queue', 'music_shuffle', 'music_repeat', 'music_lyrics', 'music_stop_confirm', 'music_stop_cancel',
-  'music_prev', 'music_rewind', 'music_forward', 'music_save', 'music_voldown', 'music_mute', 'music_volup'
+  'music_prev', 'music_rewind', 'music_forward', 'music_voldown', 'music_mute', 'music_volup', 'music_anorm'
 ];
 
 const execute = async (interaction) => {
@@ -169,14 +169,36 @@ const execute = async (interaction) => {
         if (player.isLyricsVisible) {
           player.isQueueVisible = false;
           await interaction.deferUpdate().catch(() => {});
-
-          const track = player.currentTrack;
           player.updateNowPlayingMessage(); // Update UI to show button state change
           player.fetchLyricsIfVisible(); // Fetch lyrics asynchronously
         } else {
           player.updateNowPlayingMessage();
           await interaction.deferUpdate().catch(() => {});
         }
+        break;
+      }
+
+      case 'music_voldown': {
+        player.volumeDown();
+        await interaction.deferUpdate().catch(() => {});
+        break;
+      }
+
+      case 'music_mute': {
+        player.toggleMute();
+        await interaction.deferUpdate().catch(() => {});
+        break;
+      }
+
+      case 'music_volup': {
+        player.volumeUp();
+        await interaction.deferUpdate().catch(() => {});
+        break;
+      }
+
+      case 'music_anorm': {
+        player.toggleNormalizer();
+        await interaction.deferUpdate().catch(() => {});
         break;
       }
 
