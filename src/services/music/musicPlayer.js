@@ -58,6 +58,7 @@ class MusicPlayer {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.isPaused = false;
+        this._forceSkip = false;
         this.is247 = false;
         this.isRepeat = false;
         this.isShuffle = false;
@@ -432,8 +433,20 @@ class MusicPlayer {
 
     async skip() {
         if (!this.isPlaying) return false;
+        this._forceSkip = true;
         this._killProcess();
-        this.player.stop();
+        this.player.stop(true);
+        return true;
+    }
+
+    async jump(index) {
+        if (!this.isPlaying) return false;
+        if (index < 0 || index >= this.queue.length) return false;
+
+        this.currentIndex = index - 1;
+        this._forceSkip = true;
+        this._killProcess();
+        this.player.stop(true);
         return true;
     }
 
@@ -830,11 +843,14 @@ class MusicPlayer {
             return;
         }
 
-        if (
-            this.isRepeat &&
-            this.currentIndex >= 0 &&
-            this.currentIndex < this.queue.length
-        ) {
+        let shouldReplay = this.isRepeat && this.currentIndex >= 0 && this.currentIndex < this.queue.length;
+        
+        if (this._forceSkip) {
+            shouldReplay = false;
+            this._forceSkip = false;
+        }
+
+        if (shouldReplay) {
             this.playNext(true);
         } else {
             this.playNext();
@@ -911,6 +927,7 @@ class MusicPlayer {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.isPaused = false;
+        this._forceSkip = false;
         this.isRepeat = false;
         this.isQueueVisible = false;
         this.isLyricsVisible = false;

@@ -53,13 +53,39 @@ const execute = async (interaction) => {
         await interaction.deferUpdate().catch(() => {});
         break;
 
+      case 'music_prev': {
+        if (player.isPlaying) {
+          player.jump(0);
+        }
+        await interaction.deferUpdate().catch(() => {});
+        break;
+      }
+
+      case 'music_rewind': {
+        if (player.isPlaying) {
+          if (player.currentIndex > 0) {
+            player.jump(player.currentIndex - 1);
+          } else {
+            player.jump(0);
+          }
+        }
+        await interaction.deferUpdate().catch(() => {});
+        break;
+      }
+
+      case 'music_forward': {
+        if (player.isPlaying) {
+          player.skip();
+        }
+        await interaction.deferUpdate().catch(() => {});
+        break;
+      }
+
       case 'music_skip': {
-        const title = truncate(player.currentTrack?.title, 50) || 'Unknown';
-        await player.skip();
-        await interaction.reply({
-          embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`⏭ Skipped **${title}**.`)],
-          flags: MessageFlags.Ephemeral,
-        });
+        if (player.isPlaying && player.queue.length > 0) {
+          player.jump(player.queue.length - 1);
+        }
+        await interaction.deferUpdate().catch(() => {});
         break;
       }
 
