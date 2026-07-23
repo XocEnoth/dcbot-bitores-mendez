@@ -51,6 +51,7 @@ class MusicPlayer {
     this.connection = null;
     this.player = null;
     this.queue = [];
+    this.originalQueue = [];
     this.currentIndex = -1;
     this.isPlaying = false;
     this.isPaused = false;
@@ -142,6 +143,7 @@ class MusicPlayer {
   async addTracks(tracks) {
     const startIndex = this.queue.length;
     this.queue.push(...tracks);
+    this.originalQueue.push(...tracks);
 
     if (this.isShuffle) {
       this._shuffleUpcoming();
@@ -160,6 +162,18 @@ class MusicPlayer {
     // Insert right after the current track so it plays next
     const insertPos = this.currentIndex + 1;
     this.queue.splice(insertPos, 0, ...tracks);
+    
+    // Also insert into originalQueue to preserve insertion intention
+    if (this.currentTrack) {
+      const origIndex = this.originalQueue.indexOf(this.currentTrack);
+      if (origIndex !== -1) {
+        this.originalQueue.splice(origIndex + 1, 0, ...tracks);
+      } else {
+        this.originalQueue.push(...tracks);
+      }
+    } else {
+      this.originalQueue.push(...tracks);
+    }
 
     if (!this.isPlaying) {
       this.currentIndex = insertPos - 1;
@@ -178,6 +192,9 @@ class MusicPlayer {
 
     if (!replay) {
       this.currentIndex++;
+      if (this.currentTrack) {
+        this.currentTrack.played = true;
+      }
     }
 
     if (this.currentIndex >= this.queue.length) {
@@ -388,6 +405,19 @@ class MusicPlayer {
     ];
   }
 
+  _unshuffleUpcoming() {
+    if (this.queue.length <= this.currentIndex + 1) return;
+    
+    // Filter originalQueue to find tracks that haven't been played
+    // and are not the currently playing track.
+    const unplayedOriginal = this.originalQueue.filter(t => !t.played && t !== this.currentTrack);
+    
+    this.queue = [
+      ...this.queue.slice(0, this.currentIndex + 1),
+      ...unplayedOriginal
+    ];
+  }
+
   /**
    * Toggles or sets the shuffle mode.
    * When enabled, the next track is randomly selected from the remaining queue.
@@ -404,9 +434,11 @@ class MusicPlayer {
     
     if (this.isShuffle) {
       this._shuffleUpcoming();
-      this._preNormalizeNext();
+    } else {
+      this._unshuffleUpcoming();
     }
-
+    
+    this._preNormalizeNext();
     this.updateNowPlayingMessage();
     return this.isShuffle;
   }
@@ -671,6 +703,7 @@ class MusicPlayer {
 
   _cleanup() {
     this.queue = [];
+    this.originalQueue = [];
     this.currentIndex = -1;
     this.isPlaying = false;
     this.isPaused = false;
