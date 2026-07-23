@@ -43,6 +43,18 @@ const execute = async (interaction) => {
   }
 
   try {
+    if (interaction.customId.startsWith('music_queuepage_')) {
+      const parts = interaction.customId.split('_');
+      const page = parseInt(parts[2], 10);
+      
+      const { buildQueueEmbed, buildQueueButtons } = await import('../../utils/queueBuilder.js');
+      await interaction.update({
+        embeds: [buildQueueEmbed(player, page)],
+        components: [buildQueueButtons(player, page)]
+      });
+      return;
+    }
+
     switch (interaction.customId) {
       case 'music_playpause':
         if (player.isPaused) {
