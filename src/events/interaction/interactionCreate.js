@@ -99,6 +99,9 @@ const execute = async (interaction) => {
 
       case 'music_queue': {
         player.isQueueVisible = !player.isQueueVisible;
+        if (player.isQueueVisible) {
+          player.isLyricsVisible = false;
+        }
         player.updateNowPlayingMessage();
         await interaction.deferUpdate().catch(() => {});
         break;
@@ -118,62 +121,41 @@ const execute = async (interaction) => {
       }
 
       case 'music_lyrics': {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
         if (!player.isPlaying || !player.currentTrack) {
-          return interaction.editReply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ There is no song currently playing.')],
-          });
+          await interaction.deferUpdate().catch(() => {});
+          break;
         }
 
-        try {
+        player.isLyricsVisible = !player.isLyricsVisible;
+
+        if (player.isLyricsVisible) {
+          player.isQueueVisible = false;
+          await interaction.deferUpdate().catch(() => {});
+
           const track = player.currentTrack;
-          const result = await lyricsService.searchLyrics(track.title, track.author);
+          const trackId = track.url || track.title;
 
-          if (!result) {
-            return interaction.editReply({
-              embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No lyrics were found for the currently playing track.')],
-            });
+          if (player.currentLyricsTrackId !== trackId) {
+            player.currentLyrics = '⏳ *Searching lyrics...*';
+            player.updateNowPlayingMessage();
+
+            try {
+              const result = await lyricsService.searchLyrics(track.title, track.author);
+              if (result && result.lyrics) {
+                player.currentLyrics = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n${result.lyrics}`;
+              } else {
+                player.currentLyrics = '❌ *No lyrics were found for this track.*';
+              }
+              player.currentLyricsTrackId = trackId;
+            } catch (error) {
+              logger.error('Error fetching lyrics for inline embed', error);
+              player.currentLyrics = '⚠️ *Failed to retrieve lyrics.*';
+            }
           }
-
-          const header = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n`;
-          const MAX_DESC = 4096;
-
-          if (header.length + result.lyrics.length <= MAX_DESC) {
-            return interaction.editReply({
-              embeds: [new EmbedBuilder()
-                .setColor(config.embedColor)
-                .setTitle('🎵 Lyrics')
-                .setDescription(header + result.lyrics)],
-            });
-          }
-
-          // Split long lyrics into multiple embeds
-          const chunks = lyricsService.splitLyrics(result.lyrics, MAX_DESC - header.length);
-
-          await interaction.editReply({
-            embeds: [new EmbedBuilder()
-              .setColor(config.embedColor)
-              .setTitle('🎵 Lyrics')
-              .setDescription(header + chunks[0])
-              .setFooter({ text: `Page 1/${chunks.length}` })],
-          });
-
-          for (let i = 1; i < chunks.length; i++) {
-            await interaction.followUp({
-              embeds: [new EmbedBuilder()
-                .setColor(config.embedColor)
-                .setTitle('🎵 Lyrics (continued)')
-                .setDescription(chunks[i])
-                .setFooter({ text: `Page ${i + 1}/${chunks.length}` })],
-              flags: MessageFlags.Ephemeral,
-            });
-          }
-        } catch (error) {
-          logger.error('Error fetching lyrics', error);
-          return interaction.editReply({
-            embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('⚠️ Failed to retrieve lyrics. Please try again later.')],
-          });
+          player.updateNowPlayingMessage();
+        } else {
+          player.updateNowPlayingMessage();
+          await interaction.deferUpdate().catch(() => {});
         }
         break;
       }
