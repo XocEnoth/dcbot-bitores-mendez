@@ -674,7 +674,7 @@ class MusicPlayer {
                 },
                 {
                     name: "Queue",
-                    value: `${this.queue.length} Songs`,
+                    value: `${this.currentIndex + 1} / ${this.queue.length} Songs`,
                     inline: true,
                 },
             )
