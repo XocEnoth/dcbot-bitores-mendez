@@ -21,8 +21,6 @@ const execute = async (message) => {
     return message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`📜 There are no upcoming tracks in the queue. Use \`${config.prefix}play <track>\` to add more.`)] });
   }
 
-  // Set the initial queue visibility true if invoked via command
-  player.isQueueVisible = true;
   const totalPages = Math.ceil(player.queue.length / TRACKS_PER_PAGE);
   let currentPage = 0;
 
