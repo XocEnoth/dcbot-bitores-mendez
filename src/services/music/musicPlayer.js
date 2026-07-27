@@ -217,6 +217,8 @@ class MusicPlayer {
     async playNext(replay = false) {
         if (this.destroyed) return;
 
+        const currentSessionId = this.playSessionId;
+
         this._killProcess();
         this._clearIdleTimeout();
 
@@ -249,6 +251,13 @@ class MusicPlayer {
             if (this.isNormalizerEnabled) {
                 const { gainDb: calculatedGain, measuredLufs } =
                     await audioNormalizer.measure(track);
+                
+                // Abort if player was stopped/cleared during the async measurement
+                if (this.playSessionId !== currentSessionId) {
+                    logger.info(`[Player] playNext aborted for "${track.title}" because session changed during measurement.`);
+                    return;
+                }
+
                 gainDb = calculatedGain;
                 logger.info(`[Normalizer] Track: ${track.title}`);
                 logger.info(`[Normalizer] Measured: ${measuredLufs} LUFS`);
@@ -500,6 +509,11 @@ class MusicPlayer {
         this.isPlaying = false;
         this.isPaused = false;
         this.player?.stop(true);
+
+        try {
+            await this.nowPlayingMessage?.delete().catch(() => {});
+        } catch {}
+        this.nowPlayingMessage = null;
 
         if (!this.is247) {
             this._startIdleTimeout();
@@ -867,16 +881,29 @@ class MusicPlayer {
     }
 
     async _sendNowPlaying() {
+        if (!this.isPlaying) return;
+        const currentSessionId = this.playSessionId;
+
         // Delete old now playing message
         try {
             await this.nowPlayingMessage?.delete().catch(() => {});
         } catch {}
 
+        if (this.playSessionId !== currentSessionId || !this.isPlaying) return;
+
         const payload = this._buildNowPlayingPayload();
         if (!payload) return;
 
         try {
-            this.nowPlayingMessage = await this.textChannel.send(payload);
+            const msg = await this.textChannel.send(payload);
+            
+            // If the player was stopped or skipped while the HTTP request was in flight, delete the ghost message
+            if (this.playSessionId !== currentSessionId || !this.isPlaying) {
+                await msg.delete().catch(() => {});
+                return;
+            }
+            
+            this.nowPlayingMessage = msg;
         } catch (error) {
             logger.error("Failed to send now playing message", error);
         }
@@ -1010,6 +1037,10 @@ class MusicPlayer {
         this.currentLyricsTrackId = null;
         this.connection = null;
         this.player = null;
+
+        try {
+            this.nowPlayingMessage?.delete().catch(() => {});
+        } catch {}
         this.nowPlayingMessage = null;
         this._clearIdleTimeout();
 
