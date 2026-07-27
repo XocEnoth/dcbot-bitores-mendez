@@ -78,6 +78,7 @@ class MusicPlayer {
         this._ffmpegProcess = null;
         this._consecutiveFailures = 0;
         this._playbackInterval = null;
+        this.playSessionId = Date.now();
     }
 
     async connect(voiceChannel, textChannel) {
@@ -492,6 +493,7 @@ class MusicPlayer {
     }
 
     async stop() {
+        this.playSessionId = Date.now();
         this._killProcess();
         this.queue = [];
         this.currentIndex = -1;
@@ -994,6 +996,7 @@ class MusicPlayer {
     }
 
     _cleanup() {
+        this.playSessionId = Date.now();
         this.queue = [];
         this.originalQueue = [];
         this.currentIndex = -1;

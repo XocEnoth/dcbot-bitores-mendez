@@ -60,7 +60,12 @@ const execute = async (message, args) => {
   const loadingMsg = await message.reply({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('🔍 Searching...')] });
 
   try {
+    const currentSessionId = player.playSessionId;
     const tracks = await trackResolver.resolve(query, page);
+
+    if (player.playSessionId !== currentSessionId) {
+      return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ Search cancelled because the player was stopped or disconnected.')] }).catch(() => {});
+    }
 
     if (tracks.length === 0) {
       return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No results found for that search query.')] });
