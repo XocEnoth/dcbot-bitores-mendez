@@ -61,11 +61,26 @@ const execute = async (message, args) => {
 
   try {
     const currentSessionId = player.playSessionId;
-    const tracks = await trackResolver.resolve(query, page);
+    
+    // Poll for cancellation to provide instant UI feedback
+    const waitForCancel = new Promise((_, reject) => {
+      const interval = setInterval(() => {
+        if (player.playSessionId !== currentSessionId) {
+          clearInterval(interval);
+          reject(new Error('CANCELLED'));
+        }
+      }, 500);
+      
+      // Clean up the interval when the command finishes normally
+      setTimeout(() => clearInterval(interval), 60000); // safety fallback
+    });
 
-    if (player.playSessionId !== currentSessionId) {
-      return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ Search cancelled because the player was stopped or disconnected.')] }).catch(() => {});
-    }
+    const isCancelled = () => player.playSessionId !== currentSessionId;
+    
+    const tracks = await Promise.race([
+      trackResolver.resolve(query, page, isCancelled),
+      waitForCancel
+    ]);
 
     if (tracks.length === 0) {
       return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ No results found for that search query.')] });
@@ -101,6 +116,10 @@ const execute = async (message, args) => {
   } catch (error) {
     const errorMsg = error.message || 'An error occurred while searching for the track.';
     
+    if (errorMsg === 'CANCELLED') {
+      return loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription('❌ Search cancelled because the player was stopped or disconnected.')] }).catch(() => {});
+    }
+    
     // Handle specific limits and user errors to not log to CMD
     if (!errorMsg.includes('Spotify limits public playlist scraping') &&
         !errorMsg.includes('This YouTube playlist contains hidden/unavailable videos') &&
@@ -109,7 +128,7 @@ const execute = async (message, args) => {
       logger.error('Error resolving track', error);
     }
     
-    await loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ ${errorMsg}\n\n*If this issue persists, please contact Discord: **xocenoth**.*`)] });
+    await loadingMsg.edit({ embeds: [new EmbedBuilder().setColor(config.embedColor).setDescription(`❌ ${errorMsg}\n\n*If this issue persists, please contact Discord: **xocenoth**.*`)] }).catch(() => {});
   }
 };
 

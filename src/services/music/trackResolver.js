@@ -350,7 +350,7 @@ const resolveSpotifyTrack = async (url, parsed) => {
 
 // --- Resolve a Spotify playlist or album ---
 
-const resolveSpotifyCollection = async (url, parsed, page = 1) => {
+const resolveSpotifyCollection = async (url, parsed, page = 1, isCancelled = () => false) => {
     const type = parsed.type; // 'playlist' or 'album'
 
     // Attempt 1: Scrape embed page
@@ -396,6 +396,7 @@ const resolveSpotifyCollection = async (url, parsed, page = 1) => {
 
     const resolved = [];
     for (const t of limited) {
+        if (isCancelled()) throw new Error("CANCELLED");
         try {
             const track = await searchYouTube(t.name, t.artist);
             if (track) resolved.push(track);
@@ -428,7 +429,7 @@ const formatRawDuration = (ms) => {
     return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
-const resolveYouTubePlaylistApi = async (playlistId, page) => {
+const resolveYouTubePlaylistApi = async (playlistId, page, isCancelled = () => false) => {
     const API_KEY = config.youtubeApiKey;
     let allItems = [];
     let nextPageToken = "";
@@ -436,6 +437,7 @@ const resolveYouTubePlaylistApi = async (playlistId, page) => {
     logger.info(`Fetching playlist ${playlistId} via YouTube API...`);
 
     while (true) {
+        if (isCancelled()) throw new Error("CANCELLED");
         const res = await fetch(
             `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}${nextPageToken ? `&pageToken=${nextPageToken}` : ""}`,
         );
@@ -478,6 +480,7 @@ const resolveYouTubePlaylistApi = async (playlistId, page) => {
     
     // Chunk video ID fetching since YouTube API limits to 50 ids per request
     for (let i = 0; i < limited.length; i += MAX) {
+        if (isCancelled()) throw new Error("CANCELLED");
         const chunk = limited.slice(i, i + MAX);
         const videoIds = chunk.map((item) => item.snippet.resourceId.videoId).join(",");
         
@@ -513,7 +516,7 @@ const resolveYouTubePlaylistApi = async (playlistId, page) => {
 
 // --- Main resolver ---
 
-const resolve = async (query, page = 1) => {
+const resolve = async (query, page = 1, isCancelled = () => false) => {
     let validated;
     try {
         validated = await play.validate(query);
@@ -548,7 +551,7 @@ const resolve = async (query, page = 1) => {
 
         if (config.youtubeApiKey && !isMix && listId) {
             try {
-                return await resolveYouTubePlaylistApi(listId, page);
+                return await resolveYouTubePlaylistApi(listId, page, isCancelled);
             } catch (error) {
                 if (
                     error.message.includes(
@@ -643,7 +646,7 @@ const resolve = async (query, page = 1) => {
     if (validated === "sp_playlist" || validated === "sp_album") {
         const parsed = parseSpotifyUrl(query);
         if (!parsed) throw new Error("Invalid Spotify URL.");
-        return resolveSpotifyCollection(query, parsed, page);
+        return resolveSpotifyCollection(query, parsed, page, isCancelled);
     }
 
     // Default: YouTube search
