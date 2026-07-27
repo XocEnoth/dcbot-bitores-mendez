@@ -349,13 +349,18 @@ class MusicPlayer {
                 : null; // Static gain for recorded tracks
 
             const ffmpegArgs = [
+                "-analyzeduration", "0",    // Skip lengthy format analysis (input is known audio)
+                "-probesize", "64000",      // Increase probe buffer to detect codec accurately from pipe
                 "-i",
                 "pipe:0", // Read from stdin (piped from yt-dlp)
             ];
 
-            if (audioFilter) {
-                ffmpegArgs.push("-af", audioFilter); // Audio filter: volume gain or loudnorm
-            }
+            // Build audio filter chain: normalization + high-quality resampling
+            const filters = [];
+            if (audioFilter) filters.push(audioFilter);
+            filters.push("aresample=resampler=swr:filter_size=64:cutoff=0.91"); // High-quality SWR resampling
+
+            ffmpegArgs.push("-af", filters.join(","));
 
             ffmpegArgs.push(
                 "-f",
