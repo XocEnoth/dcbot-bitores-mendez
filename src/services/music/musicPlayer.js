@@ -345,8 +345,8 @@ class MusicPlayer {
             const audioFilter = this.isNormalizerEnabled
                 ? isLive
                     ? "loudnorm=I=-14:LRA=11:TP=-1.5" // Real-time normalization for live
-                    : `volume=${gainDb}dB`
-                : null; // Static gain for recorded tracks
+                    : `volume=${gainDb}dB,alimiter=limit=-1.5dB` // Static gain + peak limiter to prevent clipping
+                : null; // No normalizer filter
 
             const ffmpegArgs = [
                 "-analyzeduration", "0",    // Skip lengthy format analysis (input is known audio)
