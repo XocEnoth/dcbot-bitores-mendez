@@ -802,6 +802,10 @@ class MusicPlayer {
                         ? ButtonStyle.Success
                         : ButtonStyle.Secondary,
                 ),
+            new ButtonBuilder()
+                .setCustomId("music_help")
+                .setEmoji("❓")
+                .setStyle(ButtonStyle.Secondary),
         );
 
         const embeds = [embed];
