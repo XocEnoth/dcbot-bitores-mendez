@@ -408,6 +408,132 @@ const resolveSpotifyCollection = async (url, parsed, page = 1, isCancelled = () 
     return resolved;
 };
 
+// --- Apple Music helpers (Web Scraping) ---
+
+const parseAppleMusicUrl = (url) => {
+    const m = url.match(/music\.apple\.com\/(?:[a-z]{2}\/)?(album|playlist|song)\/.*?(?:\/(\d+))?(?:\?i=(\d+))?/);
+    if (!m) return null;
+    
+    const type = m[1];
+    // If it's an album URL but has ?i= parameter, it's actually a single track from the album
+    if (type === 'album' && m[3]) {
+        return { type: 'track', id: m[3] };
+    }
+    // E.g., /song/.../id
+    if (type === 'song') {
+        return { type: 'track', id: m[2] };
+    }
+    return { type, id: m[2] };
+};
+
+const extractAppleMusicTracks = (obj, tracks = []) => {
+    if (!obj || typeof obj !== "object") return tracks;
+
+    // Check if the current object represents a track
+    if (
+        obj.type === "tracks" ||
+        obj.kind === "song" ||
+        obj.type === "songs" ||
+        (obj.title && obj.playAction)
+    ) {
+        const title = obj.title;
+        let artist = "";
+        
+        if (obj.subtitleLinks && obj.subtitleLinks.length > 0) {
+            artist = obj.subtitleLinks[0].title;
+        } else if (obj.artistName) {
+            artist = obj.artistName;
+        }
+
+        // Avoid duplicates in the tracklist
+        if (title && !tracks.some((t) => t.name === title && t.artist === artist)) {
+            tracks.push({ name: title, artist });
+        }
+    }
+
+    // Recursively search nested properties
+    for (const key in obj) {
+        extractAppleMusicTracks(obj[key], tracks);
+    }
+    
+    return tracks;
+};
+
+const resolveAppleMusic = async (url, parsed, page = 1, isCancelled = () => false) => {
+    logger.info(`Fetching Apple Music ${parsed.type}...`);
+    
+    try {
+        const res = await fetch(url, { headers: SCRAPE_HEADERS });
+        if (!res.ok) {
+            throw new Error(`Apple Music returned status ${res.status}`);
+        }
+        
+        const html = await res.text();
+        const ssdMatch = html.match(
+            /<script type="application\/json" id="serialized-server-data">([\s\S]*?)<\/script>/
+        );
+
+        let trackNames = [];
+        if (ssdMatch) {
+            try {
+                const rawData = JSON.parse(ssdMatch[1]);
+                trackNames = extractAppleMusicTracks(rawData);
+            } catch (error) {
+                logger.error("Failed to parse Apple Music JSON data", error);
+            }
+        }
+
+        // Fallback: try to get a single track from the title tag if JSON fails or is empty
+        if (trackNames.length === 0 && parsed.type === 'track') {
+            const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/);
+            if (titleMatch) {
+                // e.g., "Song Name - Single by Artist - Apple Music"
+                const titleStr = titleMatch[1];
+                const parts = titleStr.split(" - ");
+                if (parts.length >= 2) {
+                    trackNames.push({ name: parts[0].trim(), artist: "" });
+                }
+            }
+        }
+
+        if (trackNames.length === 0) {
+            throw new Error("Could not retrieve tracks from this Apple Music URL. The page may be private or unavailable.");
+        }
+
+        const MAX = 50;
+        let limited;
+
+        if (page === 'all') {
+            limited = trackNames;
+        } else {
+            const startIndex = (page - 1) * MAX;
+            limited = trackNames.slice(startIndex, startIndex + MAX);
+
+            if (limited.length === 0) {
+                throw new Error(`Page ${page} is empty. The Apple Music link only has ${Math.ceil(trackNames.length / MAX)} page(s).`);
+            }
+        }
+
+        logger.info(`Resolving ${limited.length} Apple Music tracks (page ${page}) via YouTube search...`);
+
+        const resolved = [];
+        for (const t of limited) {
+            if (isCancelled()) throw new Error("CANCELLED");
+            try {
+                const track = await searchYouTube(t.name, t.artist);
+                if (track) resolved.push(track);
+            } catch {
+                // Skip failed tracks
+            }
+        }
+
+        return resolved;
+    } catch (error) {
+        logger.error(`Error scraping Apple Music for ${url}`, error);
+        throw error;
+    }
+};
+
 // --- YouTube Data API helpers ---
 
 const parseIsoDuration = (duration) => {
@@ -517,6 +643,14 @@ const resolveYouTubePlaylistApi = async (playlistId, page, isCancelled = () => f
 // --- Main resolver ---
 
 const resolve = async (query, page = 1, isCancelled = () => false) => {
+    // Apple Music
+    if (query.includes('music.apple.com')) {
+        const amParsed = parseAppleMusicUrl(query);
+        if (amParsed) {
+            return resolveAppleMusic(query, amParsed, page, isCancelled);
+        }
+    }
+
     let validated;
     try {
         validated = await play.validate(query);

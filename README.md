@@ -1,10 +1,10 @@
-# 🤖 Bitores Mendez Discord Bot (v6.7.0)
+# 🤖 Bitores Mendez Discord Bot (v6.8.0)
 
 [![discord.js](https://img.shields.io/badge/discord.js-v14.26-blue.svg?logo=discord&logoColor=white)](https://discord.js.org/)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A modular, highly scalable Discord bot built with **discord.js v14** and modern **ES6 modules**. Features a high-performance music playback engine with native support for YouTube and Spotify URLs, complete with an interactive button-based player interface.
+A modular, highly scalable Discord bot built with **discord.js v14** and modern **ES6 modules**. Features a high-performance music playback engine with native support for YouTube, Spotify, and Apple Music URLs, complete with an interactive button-based player interface.
 
 ---
 
@@ -14,7 +14,7 @@ A modular, highly scalable Discord bot built with **discord.js v14** and modern 
 - **Advanced Music Engine**: Play, pause, resume, skip, stop, and queue tracks using direct prefix commands (`bm!play`, `bm!insert`, `bm!skip`, etc.). Includes a **24/7 mode** to keep the bot connected.
 - **Dynamic Track Resolution**:
   - Resolves YouTube videos, playlists, and search queries.
-  - Automatically parses Spotify tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Spotify Developer API credentials required!).
+  - Automatically parses Spotify and Apple Music tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Developer API credentials required!).
 - **Interactive Controls**: Beautiful, rich embeds with live-updating buttons for real-time player control.
 - **Lyrics Display**: Click the "Show Lyrics" button on the Now Playing message to view lyrics for the current track, powered by [lrclib.net](https://lrclib.net).
 - **Volume Normalization**: Automatic LUFS-based loudness normalization (-14 LUFS target, YouTube standard) ensures consistent volume across all tracks without manual adjustment. Toggleable per server via `bm!anorm`.

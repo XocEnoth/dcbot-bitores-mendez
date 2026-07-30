@@ -58,7 +58,7 @@ Utility:
 - ${config.prefix}chat <prompt> : Chat with the BM AI Assistant (powered by Google Gemini API). Includes rate limiting and pagination.
 
 Music:
-- ${config.prefix}play <query or URL> [page] : Plays a track/playlist from YouTube/Spotify, or searches YouTube. Supports pagination for playlists.
+- ${config.prefix}play <query or URL> [page] : Plays a track/playlist from YouTube, Spotify, or Apple Music, or searches YouTube. Supports pagination for playlists.
 - ${config.prefix}insert <query or URL> [page] : Inserts a track/playlist to the front of the queue (plays next).
 - ${config.prefix}pause : Pauses the current audio playback.
 - ${config.prefix}resume : Resumes the paused audio playback.

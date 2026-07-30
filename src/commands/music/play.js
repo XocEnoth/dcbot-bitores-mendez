@@ -6,7 +6,7 @@ import config from '../../config/index.js';
 import logger from '../../utils/logger.js';
 
 const name = 'play';
-const description = 'Play a track from YouTube or Spotify';
+const description = 'Play a track from YouTube, Spotify, or Apple Music';
 
 /**
  * Executes the play command to search and queue audio tracks or playlists.
