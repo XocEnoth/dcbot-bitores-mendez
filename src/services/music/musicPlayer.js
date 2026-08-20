@@ -280,6 +280,16 @@ class MusicPlayer {
                     err.signal !== "SIGTERM" &&
                     err.exitCode !== 255
                 ) {
+                    if (!useSoundCloudFallback && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+                        this.currentTrack._scFallbackAttempted = true;
+                        logger.warn(`[Player] yt-dlp failed extraction. Triggering SoundCloud fallback for "${track.title}"...`);
+                        // Ensure we don't trigger multiple playNext calls by checking if we are still on the same session
+                        if (this.playSessionId === currentSessionId) {
+                            this.playNext(true, true).catch(logger.error);
+                        }
+                        return;
+                    }
+
                     logger.error(
                         `[Player] yt-dlp process failed for "${track.title}":`,
                         err,
@@ -357,6 +367,15 @@ class MusicPlayer {
             ffmpegProc.on("close", (code) => {
                 // Code 255 = killed by SIGTERM (normal during skip/stop)
                 if (code && code !== 0 && code !== 255) {
+                    if (!useSoundCloudFallback && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+                        this.currentTrack._scFallbackAttempted = true;
+                        logger.warn(`[Player] FFmpeg processing failed. Triggering SoundCloud fallback for "${track.title}"...`);
+                        if (this.playSessionId === currentSessionId) {
+                            this.playNext(true, true).catch(logger.error);
+                        }
+                        return;
+                    }
+
                     logger.error(
                         `FFmpeg exited with code ${code}. Stderr: ${ffmpegStderr.trim()}`,
                     );
