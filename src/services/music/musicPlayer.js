@@ -264,7 +264,9 @@ class MusicPlayer {
             let targetUrl = track.url;
             if (useSoundCloudFallback) {
                 // Remove ytsearch/url logic and just search soundcloud directly
-                const query = `${track.title} ${track.author || ""}`.trim();
+                let cleanTitle = track.title.replace(/[\(\[].*?(official|lyric|video|audio|music|live).*?[\)\]]/gi, "").trim();
+                if (!cleanTitle) cleanTitle = track.title; // Fallback if regex stripped everything
+                const query = `${cleanTitle} ${track.author || ""}`.trim();
                 targetUrl = `scsearch1:${query}`;
                 logger.info(`[Player] Using SoundCloud fallback for: ${query}`);
             }
@@ -288,6 +290,8 @@ class MusicPlayer {
                             this.playNext(true, true).catch(logger.error);
                         }
                         return;
+                    } else if (useSoundCloudFallback) {
+                        logger.error(`[Player] SoundCloud fallback extraction failed for "${track.title}".`);
                     }
 
                     logger.error(
@@ -374,6 +378,17 @@ class MusicPlayer {
                             this.playNext(true, true).catch(logger.error);
                         }
                         return;
+                    } else if (useSoundCloudFallback) {
+                        logger.error(`[Player] SoundCloud fallback also failed for "${track.title}".`);
+                        if (this.playSessionId === currentSessionId) {
+                            this.textChannel?.send({
+                                embeds: [
+                                    new EmbedBuilder()
+                                        .setColor(config.embedColor)
+                                        .setDescription(`❌ Failed to play **${truncate(track.title, 50)}** even after SoundCloud fallback. Skipping...`),
+                                ],
+                            }).catch(() => {});
+                        }
                     }
 
                     logger.error(
