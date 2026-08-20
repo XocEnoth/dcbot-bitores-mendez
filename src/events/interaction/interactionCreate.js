@@ -34,7 +34,6 @@ const MUSIC_BUTTONS = [
     "music_voldown",
     "music_mute",
     "music_volup",
-    "music_anorm",
     "music_help",
 ];
 
@@ -226,7 +225,6 @@ const execute = async (interaction) => {
                             `🔉 **Vol Down** : Decrease the player volume.\n` +
                             `🔇 **Mute** : Mute or unmute the player.\n` +
                             `🔊 **Vol Up** : Increase the player volume.\n` +
-                            `🎚️ **Normalizer** : Toggle Audio Normalizer (balances volume levels).\n` +
                             `❓ **Help** : Show this help menu.`,
                     );
 
@@ -288,11 +286,6 @@ const execute = async (interaction) => {
                 break;
             }
 
-            case "music_anorm": {
-                player.toggleNormalizer();
-                await interaction.deferUpdate().catch(() => {});
-                break;
-            }
 
             default:
                 await interaction.reply({

@@ -22,7 +22,6 @@ import {
 import config from "../../config/index.js";
 import { formatDuration, truncate } from "../../utils/formatters.js";
 import logger from "../../utils/logger.js";
-import audioNormalizer from "./audioNormalizer.js";
 import lyricsService from "./lyricsService.js";
 
 const IDLE_TIMEOUT_MS = 300_000; // 5 minutes
@@ -62,14 +61,12 @@ class MusicPlayer {
         this.is247 = false;
         this.volume = 100;
         this.isMuted = false;
-        this.isNormalizerEnabled = true;
         this.isRepeat = false;
         this.isShuffle = false;
         this.isQueueVisible = false;
         this.isLyricsVisible = false;
         this.currentLyrics = null;
         this.currentLyricsTrackId = null;
-        this.isNormalizerEnabled = true;
         this.nowPlayingMessage = null;
         this.idleTimeout = null;
         this.destroyed = false;
@@ -183,7 +180,6 @@ class MusicPlayer {
             this.currentIndex = startIndex - 1;
             await this.playNext();
         } else {
-            this._preNormalizeNext();
             this.updateNowPlayingMessage();
         }
     }
@@ -209,7 +205,6 @@ class MusicPlayer {
             this.currentIndex = insertPos - 1;
             await this.playNext();
         } else {
-            this._preNormalizeNext();
             this.updateNowPlayingMessage();
         }
     }
@@ -245,33 +240,7 @@ class MusicPlayer {
 
         try {
             // ================================================================
-            // Phase 1: Loudness Measurement
-            // ================================================================
-            let gainDb = 0;
-            if (this.isNormalizerEnabled) {
-                const { gainDb: calculatedGain, measuredLufs } =
-                    await audioNormalizer.measure(track);
-                
-                // Abort if player was stopped/cleared during the async measurement
-                if (this.playSessionId !== currentSessionId) {
-                    logger.info(`[Player] playNext aborted for "${track.title}" because session changed during measurement.`);
-                    return;
-                }
-
-                gainDb = calculatedGain;
-                logger.info(`[Normalizer] Track: ${track.title}`);
-                logger.info(`[Normalizer] Measured: ${measuredLufs} LUFS`);
-                logger.info(
-                    `[Normalizer] Applied Gain: ${gainDb > 0 ? "+" : ""}${gainDb} dB`,
-                );
-            } else {
-                logger.info(
-                    `[Normalizer] Skipped for: ${track.title} (Audio Normalizer Disabled)`,
-                );
-            }
-
-            // ================================================================
-            // Phase 2: yt-dlp Audio Stream
+            // Phase 1: yt-dlp Audio Stream
             // ================================================================
             const useCookies = hasCookies();
             const ytDlpOptions = {
@@ -324,29 +293,14 @@ class MusicPlayer {
                 throw new Error("Failed to create audio stream");
             }
 
-            // Background pre-normalization is triggered at the end of this function
-
             // ================================================================
-            // Phase 3: FFmpeg Normalization Pipeline
+            // Phase 2: FFmpeg Audio Processing Pipeline
             // ================================================================
-            // Instead of feeding yt-dlp's raw output directly to discord.js
-            // (which would run its own FFmpeg internally), we explicitly pipe
-            // through our own FFmpeg instance with the volume filter applied.
-            //
-            // Pipeline: yt-dlp stdout → FFmpeg (volume filter) → PCM output → discord.js
-            //
-            // For recorded tracks: "volume=XdB" — simple, zero-overhead gain adjustment
-            // For live streams:    "loudnorm" — real-time dynamic normalization
+            // Pipeline: yt-dlp stdout → FFmpeg (resampling) → PCM output → discord.js
             //
             // Output format: signed 16-bit little-endian PCM, 48kHz stereo
             // This matches discord.js StreamType.Raw, which only needs Opus encoding
             // (done efficiently by opusscript) — no additional FFmpeg decode step.
-            const isLive = !track.duration || track.duration <= 0;
-            const audioFilter = this.isNormalizerEnabled
-                ? isLive
-                    ? "loudnorm=I=-14:LRA=11:TP=-1.5" // Real-time normalization for live
-                    : `volume=${gainDb}dB,alimiter=limit=-1.5dB` // Static gain + peak limiter to prevent clipping
-                : null; // No normalizer filter
 
             const ffmpegArgs = [
                 "-analyzeduration", "0",    // Skip lengthy format analysis (input is known audio)
@@ -355,12 +309,8 @@ class MusicPlayer {
                 "pipe:0", // Read from stdin (piped from yt-dlp)
             ];
 
-            // Build audio filter chain: normalization + high-quality resampling
-            const filters = [];
-            if (audioFilter) filters.push(audioFilter);
-            filters.push("aresample=resampler=swr:filter_size=64:cutoff=0.91"); // High-quality SWR resampling
-
-            ffmpegArgs.push("-af", filters.join(","));
+            // High-quality SWR resampling
+            ffmpegArgs.push("-af", "aresample=resampler=swr:filter_size=64:cutoff=0.91");
 
             ffmpegArgs.push(
                 "-f",
@@ -384,7 +334,7 @@ class MusicPlayer {
             // Suppress pipe errors that occur naturally when skip/stop kills processes
             ffmpegProc.stdin.on("error", () => {});
             ffmpegProc.on("error", (err) => {
-                logger.error(`FFmpeg normalizer error: ${err.message}`);
+                logger.error(`FFmpeg processing error: ${err.message}`);
             });
 
             let ffmpegStderr = "";
@@ -398,12 +348,12 @@ class MusicPlayer {
                 // Code 255 = killed by SIGTERM (normal during skip/stop)
                 if (code && code !== 0 && code !== 255) {
                     logger.error(
-                        `FFmpeg normalizer exited with code ${code}. Stderr: ${ffmpegStderr.trim()}`,
+                        `FFmpeg exited with code ${code}. Stderr: ${ffmpegStderr.trim()}`,
                     );
                 }
             });
 
-            // Create audio resource from FFmpeg's normalized PCM output
+            // Create audio resource from FFmpeg's PCM output
             // StreamType.Raw tells discord.js the input is already decoded PCM
             // and only needs Opus encoding (no additional FFmpeg decode step)
             const resource = createAudioResource(ffmpegProc.stdout, {
@@ -420,7 +370,6 @@ class MusicPlayer {
 
             await this._sendNowPlaying();
             this._startPlaybackInterval();
-            this._preNormalizeNext();
             this.fetchLyricsIfVisible();
         } catch (error) {
             logger.error(`Failed to play: ${track.title}`, error);
@@ -493,10 +442,6 @@ class MusicPlayer {
         this._applyVolume();
     }
 
-    toggleNormalizer() {
-        this.isNormalizerEnabled = !this.isNormalizerEnabled;
-        this.updateNowPlayingMessage();
-    }
 
     _applyVolume() {
         if (this.player?.state?.resource?.volume) {
@@ -577,7 +522,6 @@ class MusicPlayer {
             this._unshuffleUpcoming();
         }
 
-        this._preNormalizeNext();
         this.updateNowPlayingMessage();
         return this.isShuffle;
     }
@@ -614,7 +558,7 @@ class MusicPlayer {
             } catch {}
             this._currentProcess = null;
         }
-        // Kill FFmpeg normalizer subprocess
+        // Kill FFmpeg subprocess
         if (this._ffmpegProcess) {
             try {
                 if (!this._ffmpegProcess.killed)
@@ -795,14 +739,6 @@ class MusicPlayer {
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(this.volume >= 200),
             new ButtonBuilder()
-                .setCustomId("music_anorm")
-                .setEmoji("🎚️")
-                .setStyle(
-                    this.isNormalizerEnabled
-                        ? ButtonStyle.Success
-                        : ButtonStyle.Secondary,
-                ),
-            new ButtonBuilder()
                 .setCustomId("music_help")
                 .setEmoji("❓")
                 .setStyle(ButtonStyle.Secondary),
@@ -967,38 +903,6 @@ class MusicPlayer {
         }
     }
 
-    _preNormalizeNext() {
-        // Abort any existing background pre-normalization to free up system resources
-        if (this._preNormalizeAbortController) {
-            try {
-                this._preNormalizeAbortController.abort();
-            } catch {}
-            this._preNormalizeAbortController = null;
-        }
-
-        const nextIndex = this.currentIndex + 1;
-        if (nextIndex < this.queue.length) {
-            const nextTrack = this.queue[nextIndex];
-            // Live streams cannot be pre-normalized
-            if (nextTrack.duration && nextTrack.duration > 0) {
-                this._preNormalizeAbortController = new AbortController();
-                audioNormalizer
-                    .measure(
-                        nextTrack,
-                        this._preNormalizeAbortController.signal,
-                    )
-                    .catch((error) => {
-                        // Suppress warnings for expected aborts
-                        if (error.message !== "aborted") {
-                            logger.warn(
-                                `[Normalizer] Background pre-normalization failed for "${nextTrack.title}": ${error.message}`,
-                            );
-                        }
-                    });
-            }
-        }
-    }
-
     _handleError(error) {
         logger.error(`Audio player error in guild ${this.guildId}`, error);
         this.playNext();
@@ -1054,13 +958,6 @@ class MusicPlayer {
         this._clearIdleTimeout();
 
         this._stopPlaybackInterval();
-
-        if (this._preNormalizeAbortController) {
-            try {
-                this._preNormalizeAbortController.abort();
-            } catch {}
-            this._preNormalizeAbortController = null;
-        }
 
         if (this.onDestroy) {
             this.onDestroy(this.guildId);

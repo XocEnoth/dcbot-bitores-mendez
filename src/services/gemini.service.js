@@ -69,8 +69,7 @@ Music:
 - ${config.prefix}queue : Displays the current music queue with interactive pagination buttons.
 - ${config.prefix}shuffle [on / off] : Toggles shuffle mode on or off.
 - ${config.prefix}repeat [on / off] : Toggles repeat mode for the current track. When enabled, the current track will loop until repeat is turned off.
-- ${config.prefix}247 [on / off] : Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle.
-- ${config.prefix}anorm [on / off] : Toggles Audio Normalizer on or off for the current server.`;
+- ${config.prefix}247 [on / off] : Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle.`;
 
 /**
  * Generates a response using the Gemini API.

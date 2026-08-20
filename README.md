@@ -17,7 +17,6 @@ A modular, highly scalable Discord bot built with **discord.js v14** and modern 
   - Automatically parses Spotify and Apple Music tracks, playlists, and albums and resolves them using high-speed metadata scraping (no Developer API credentials required!).
 - **Interactive Controls**: Beautiful, rich embeds with live-updating buttons for real-time player control.
 - **Lyrics Display**: Click the "Show Lyrics" button on the Now Playing message to view lyrics for the current track, powered by [lrclib.net](https://lrclib.net).
-- **Volume Normalization**: Automatic LUFS-based loudness normalization (-14 LUFS target, YouTube standard) ensures consistent volume across all tracks without manual adjustment. Toggleable per server via `bm!anorm`.
 - **Color-Coded Logging**: Clean, formatted console logging for ease of debugging and server health monitoring.
 
 ---
@@ -105,7 +104,6 @@ npm start
 | `bm!shuffle`| `[on / off]` | Toggles shuffle mode on or off. When enabled, the next track is randomly selected from the remaining queue. |
 | `bm!repeat` | `[on / off]` | Toggles repeat mode for the current track. When enabled, the track will loop until repeat is turned off. |
 | `bm!247`   | `[on / off]` | Toggles 24/7 mode to prevent the bot from leaving the voice channel when idle. |
-| `bm!anorm` | `[on / off]` | Toggles Audio Normalizer on or off for the current server. Default is ON. |
 
 ---
 
@@ -117,7 +115,6 @@ dcbot-bitores-mendez/
 │   ├── index.js                 # App Entry Point - initializes client & event loops
 │   ├── commands/                # Bot command categories
 │   │   ├── music/               # Music commands (direct top-level execution)
-│   │   │   ├── anorm.js         # Audio Normalizer toggle
 │   │   │   ├── insert.js        # Insert track/playlist next up
 │   │   │   ├── join.js          # Join voice channel
 │   │   │   ├── leave.js         # Leave voice channel
