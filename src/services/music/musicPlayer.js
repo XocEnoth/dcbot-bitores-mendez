@@ -265,7 +265,7 @@ class MusicPlayer {
             if (useSoundCloudFallback) {
                 // Remove ytsearch/url logic and just search soundcloud directly
                 const query = `${track.title} ${track.author || ""}`.trim();
-                targetUrl = `scsearch:${query}`;
+                targetUrl = `scsearch1:${query}`;
                 logger.info(`[Player] Using SoundCloud fallback for: ${query}`);
             }
 
