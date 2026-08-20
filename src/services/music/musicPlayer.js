@@ -412,12 +412,12 @@ class MusicPlayer {
             this.isPaused = false;
             this._consecutiveFailures = 0; // Reset on successful play
 
-            // If this is a fallback, update the now playing message to notify the user
+            // If this is a fallback, update the existing now playing message instead of sending a new one
             if (useSoundCloudFallback) {
                 this.updateNowPlayingMessage();
+            } else {
+                await this._sendNowPlaying();
             }
-
-            await this._sendNowPlaying();
             this._startPlaybackInterval();
             this.fetchLyricsIfVisible();
         } catch (error) {
