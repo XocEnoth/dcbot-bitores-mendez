@@ -209,13 +209,15 @@ class MusicPlayer {
         }
     }
 
-    async playNext(replay = false) {
+    async playNext(replay = false, useSoundCloudFallback = false) {
         if (this.destroyed) return;
 
         const currentSessionId = this.playSessionId;
 
         this._killProcess();
         this._clearIdleTimeout();
+
+        this.trackStartMs = Date.now();
 
         if (!replay) {
             this.currentIndex++;
@@ -259,7 +261,15 @@ class MusicPlayer {
             }
             // Let yt-dlp auto-detect the best client and solve signatures via Node.js
 
-            const subprocess = youtubeDl.exec(track.url, ytDlpOptions);
+            let targetUrl = track.url;
+            if (useSoundCloudFallback) {
+                // Remove ytsearch/url logic and just search soundcloud directly
+                const query = `${track.title} ${track.author || ""}`.trim();
+                targetUrl = `scsearch:${query}`;
+                logger.info(`[Player] Using SoundCloud fallback for: ${query}`);
+            }
+
+            const subprocess = youtubeDl.exec(targetUrl, ytDlpOptions);
 
             this._currentProcess = subprocess;
 
@@ -368,10 +378,22 @@ class MusicPlayer {
             this.isPaused = false;
             this._consecutiveFailures = 0; // Reset on successful play
 
+            // If this is a fallback, update the now playing message to notify the user
+            if (useSoundCloudFallback) {
+                this.updateNowPlayingMessage();
+            }
+
             await this._sendNowPlaying();
             this._startPlaybackInterval();
             this.fetchLyricsIfVisible();
         } catch (error) {
+            if (!useSoundCloudFallback) {
+                logger.warn(`[Player] Synchronous error for "${track.title}". Triggering SoundCloud fallback.`);
+                if (this.currentTrack) this.currentTrack._scFallbackAttempted = true;
+                await this.playNext(true, true);
+                return;
+            }
+
             logger.error(`Failed to play: ${track.title}`, error);
             await this.textChannel
                 ?.send({
@@ -861,6 +883,15 @@ class MusicPlayer {
             if (payload) {
                 await this.nowPlayingMessage.edit(payload).catch(() => {});
             }
+        }
+
+        const playDuration = Date.now() - (this.trackStartMs || 0);
+        // If stream ends in under 5 seconds, it's likely a 403 block or extraction error
+        if (playDuration < 5000 && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+            this.currentTrack._scFallbackAttempted = true;
+            logger.warn(`[Player] Stream ended prematurely for "${this.currentTrack.title}". Triggering SoundCloud fallback.`);
+            this.playNext(true, true);
+            return;
         }
 
         // Protect against infinite skip loops when yt-dlp fails repeatedly
