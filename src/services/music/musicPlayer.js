@@ -199,6 +199,8 @@ class MusicPlayer {
         } else {
             this.updateNowPlayingMessage();
         }
+        
+        this._startBackgroundResolver();
     }
 
     async insertTracks(tracks) {
@@ -224,6 +226,8 @@ class MusicPlayer {
         } else {
             this.updateNowPlayingMessage();
         }
+        
+        this._startBackgroundResolver();
     }
 
     async playNext(replay = false, useSoundCloudFallback = false) {
@@ -263,6 +267,7 @@ class MusicPlayer {
         const track = this.queue[this.currentIndex];
 
         if (track.unresolved) {
+            track._isResolving = true;
             try {
                 const resolvedTrack = await trackResolver.searchYouTube(track.title, track.author);
                 if (resolvedTrack) {
@@ -289,6 +294,8 @@ class MusicPlayer {
                     .catch(() => {});
                 await this.playNext();
                 return;
+            } finally {
+                track._isResolving = false;
             }
         }
 
@@ -1159,6 +1166,58 @@ class MusicPlayer {
             clearInterval(this._playbackInterval);
             this._playbackInterval = null;
         }
+    }
+
+    _startBackgroundResolver() {
+        if (this._isResolvingBackground) return;
+        this._isResolvingBackground = true;
+
+        const resolveLoop = async () => {
+            while (!this.destroyed && this.queue.length > 0) {
+                // Find the first unresolved track that isn't currently being resolved
+                const trackToResolve = this.queue.find(t => t.unresolved && !t._isResolving);
+                
+                if (!trackToResolve) {
+                    // No unresolved tracks left, or they are all currently being resolved
+                    break; 
+                }
+
+                trackToResolve._isResolving = true;
+                
+                try {
+                    const resolvedTrack = await trackResolver.searchYouTube(trackToResolve.title, trackToResolve.author);
+                    if (resolvedTrack) {
+                        trackToResolve.url = resolvedTrack.url;
+                        trackToResolve.duration = resolvedTrack.duration;
+                        trackToResolve.durationRaw = resolvedTrack.durationRaw;
+                        trackToResolve.thumbnail = resolvedTrack.thumbnail;
+                        trackToResolve.unresolved = false;
+                        
+                        // Dynamically update the queue UI card if it is actively visible
+                        if (this.isQueueVisible) {
+                            this.updateNowPlayingMessage();
+                        }
+                    } else {
+                        // Failed to resolve, mark as unresolved=false so we don't try again forever
+                        trackToResolve.unresolved = false; 
+                    }
+                } catch (error) {
+                    trackToResolve.unresolved = false; // Prevent infinite loop on fail
+                } finally {
+                    trackToResolve._isResolving = false;
+                }
+                
+                // Small delay (2s) to prevent YouTube rate limits
+                await new Promise(r => setTimeout(r, 2000));
+            }
+            
+            this._isResolvingBackground = false;
+        };
+
+        resolveLoop().catch(err => {
+            logger.error("Background resolver loop encountered an error", err);
+            this._isResolvingBackground = false;
+        });
     }
 }
 
