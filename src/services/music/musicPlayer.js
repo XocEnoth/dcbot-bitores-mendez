@@ -861,10 +861,12 @@ class MusicPlayer {
         const embeds = [embed];
 
         if (this.isQueueVisible) {
-            let queueText = `**1.** [${truncate(track.title, 50)}](${track.url}) - \`[NOW PLAYING]\`\n`;
+            const formatTrack = (t) => t.url ? `[${truncate(t.title, 50)}](${t.url})` : `**${truncate(t.title, 50)}**`;
+
+            let queueText = `**1.** ${formatTrack(track)} - \`[NOW PLAYING]\`\n`;
             const upcoming = this.upcomingTracks.slice(0, 4);
             upcoming.forEach((t, i) => {
-                queueText += `**${i + 2}.** [${truncate(t.title, 50)}](${t.url})\n`;
+                queueText += `**${i + 2}.** ${formatTrack(t)}\n`;
             });
 
             if (this.upcomingTracks.length > 4) {
@@ -996,8 +998,9 @@ class MusicPlayer {
         }
 
         const playDuration = Date.now() - (this.trackStartMs || 0);
-        // If stream ends in under 5 seconds, it's likely a 403 block or extraction error
-        if (playDuration < 5000 && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+        // If stream ends in under 5 seconds, it's likely a 403 block or extraction error.
+        // Prevent triggering this fallback if the user intentionally skipped the track (_forceSkip).
+        if (!this._forceSkip && playDuration < 5000 && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
             this.currentTrack._scFallbackAttempted = true;
             logger.warn(`[Player] Stream ended prematurely for "${this.currentTrack.title}". Triggering SoundCloud fallback.`);
             this.playNext(true, true);
