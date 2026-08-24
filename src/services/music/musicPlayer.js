@@ -23,6 +23,7 @@ import config from "../../config/index.js";
 import { formatDuration, truncate } from "../../utils/formatters.js";
 import logger from "../../utils/logger.js";
 import lyricsService from "./lyricsService.js";
+import trackResolver from "./trackResolver.js";
 
 const IDLE_TIMEOUT_MS = 300_000; // 5 minutes
 const CONNECTION_TIMEOUT_MS = 30_000; // 30 seconds
@@ -260,6 +261,36 @@ class MusicPlayer {
         }
 
         const track = this.queue[this.currentIndex];
+
+        if (track.unresolved) {
+            try {
+                const resolvedTrack = await trackResolver.searchYouTube(track.title, track.author);
+                if (resolvedTrack) {
+                    track.url = resolvedTrack.url;
+                    track.duration = resolvedTrack.duration;
+                    track.durationRaw = resolvedTrack.durationRaw;
+                    track.thumbnail = resolvedTrack.thumbnail;
+                    track.unresolved = false;
+                } else {
+                    throw new Error("Track not found on YouTube");
+                }
+            } catch (error) {
+                logger.error(`[Player] Failed to resolve track: ${track.title}`, error);
+                await this.textChannel
+                    ?.send({
+                        embeds: [
+                            new EmbedBuilder()
+                                .setColor(config.embedColor)
+                                .setDescription(
+                                    `❌ Failed to resolve **${truncate(track.title, 50)}**. Skipping...`,
+                                ),
+                        ],
+                    })
+                    .catch(() => {});
+                await this.playNext();
+                return;
+            }
+        }
 
         try {
             // ================================================================

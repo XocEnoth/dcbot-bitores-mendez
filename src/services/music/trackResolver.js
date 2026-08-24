@@ -307,9 +307,20 @@ const extractTracksFromEntity = (entity, type) => {
 
 const searchYouTube = async (name, artist) => {
     const query = artist ? `${name} ${artist}` : name;
-    const results = await play.search(query.trim(), { limit: 1 });
-    if (results.length === 0) return null;
-    return extractTrackInfo(results[0]);
+    try {
+        const results = await play.search(query.trim(), { limit: 1 });
+        if (results.length > 0) {
+            return extractTrackInfo(results[0]);
+        }
+    } catch (error) {
+        logger.warn(`play-dl search failed in searchYouTube: ${error.message}. Trying yt-dlp...`);
+        try {
+            return await ytDlpSearch(query.trim());
+        } catch (ytError) {
+            logger.error(`yt-dlp fallback also failed for ${query}`, ytError);
+        }
+    }
+    return null;
 };
 
 // --- Resolve a single Spotify track (with multiple fallbacks) ---
@@ -391,19 +402,18 @@ const resolveSpotifyCollection = async (url, parsed, page = 1, isCancelled = () 
     }
 
     logger.info(
-        `Resolving ${limited.length} Spotify tracks (page ${page}) via YouTube search...`,
+        `Returning ${limited.length} Spotify tracks (page ${page}) as unresolved (lazy loading)...`,
     );
 
-    const resolved = [];
-    for (const t of limited) {
-        if (isCancelled()) throw new Error("CANCELLED");
-        try {
-            const track = await searchYouTube(t.name, t.artist);
-            if (track) resolved.push(track);
-        } catch {
-            // Skip tracks that fail to resolve
-        }
-    }
+    const resolved = limited.map((t) => ({
+        title: t.name,
+        author: t.artist || "Unknown Artist",
+        url: null,
+        duration: 0,
+        durationRaw: "0:00",
+        thumbnail: null,
+        unresolved: true,
+    }));
 
     return resolved;
 };
@@ -514,18 +524,17 @@ const resolveAppleMusic = async (url, parsed, page = 1, isCancelled = () => fals
             }
         }
 
-        logger.info(`Resolving ${limited.length} Apple Music tracks (page ${page}) via YouTube search...`);
+        logger.info(`Returning ${limited.length} Apple Music tracks (page ${page}) as unresolved (lazy loading)...`);
 
-        const resolved = [];
-        for (const t of limited) {
-            if (isCancelled()) throw new Error("CANCELLED");
-            try {
-                const track = await searchYouTube(t.name, t.artist);
-                if (track) resolved.push(track);
-            } catch {
-                // Skip failed tracks
-            }
-        }
+        const resolved = limited.map((t) => ({
+            title: t.name,
+            author: t.artist || "Unknown Artist",
+            url: null,
+            duration: 0,
+            durationRaw: "0:00",
+            thumbnail: null,
+            unresolved: true,
+        }));
 
         return resolved;
     } catch (error) {
@@ -795,4 +804,4 @@ const resolve = async (query, page = 1, isCancelled = () => false) => {
     }
 };
 
-export default { resolve };
+export default { resolve, searchYouTube };
