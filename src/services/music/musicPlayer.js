@@ -104,6 +104,14 @@ class MusicPlayer {
         this.connection.subscribe(this.player);
 
         // Handle audio player state transitions
+        this.player.on(AudioPlayerStatus.Playing, () => {
+            // Reset start time precisely when audio actually begins flowing
+            // This fixes lyrics synchronization lag caused by extraction/buffering delays
+            this.trackStartMs = Date.now();
+            this.trackPauseOffsetMs = 0;
+            this.lastPauseTimeMs = null;
+        });
+
         this.player.on(AudioPlayerStatus.Idle, () => {
             this._handleIdle().catch(() => {});
         });
