@@ -273,7 +273,7 @@ class MusicPlayer {
                 forceIpv4: true,
                 geoBypass: true,
                 noWarnings: true,
-                rmCacheDir: true,
+                noCheckCertificates: true,
                 jsRuntimes: `node:${process.execPath}`,
             };
 
@@ -348,14 +348,15 @@ class MusicPlayer {
             // (done efficiently by opusscript) — no additional FFmpeg decode step.
 
             const ffmpegArgs = [
+                "-fflags", "+nobuffer",     // Don't buffer input
+                "-flags", "low_delay",      // Enable low delay mode
                 "-analyzeduration", "0",    // Skip lengthy format analysis (input is known audio)
-                "-probesize", "64000",      // Increase probe buffer to detect codec accurately from pipe
-                "-i",
-                "pipe:0", // Read from stdin (piped from yt-dlp)
+                "-probesize", "32000",      // Reduce probe buffer to detect codec quickly
+                "-i", "pipe:0",             // Read from stdin (piped from yt-dlp)
             ];
 
-            // High-quality SWR resampling
-            ffmpegArgs.push("-af", "aresample=resampler=swr:filter_size=64:cutoff=0.91");
+            // Fast SoXR resampling instead of heavy SWR
+            ffmpegArgs.push("-af", "aresample=resampler=soxr");
 
             ffmpegArgs.push(
                 "-f",
@@ -437,7 +438,7 @@ class MusicPlayer {
             if (useSoundCloudFallback) {
                 this.updateNowPlayingMessage();
             } else {
-                await this._sendNowPlaying();
+                this._sendNowPlaying().catch(err => logger.error(`Error sending now playing message`, err));
             }
             this._startPlaybackInterval();
             this.fetchLyricsIfVisible();
