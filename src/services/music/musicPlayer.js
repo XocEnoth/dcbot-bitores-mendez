@@ -66,6 +66,8 @@ class MusicPlayer {
         this.isQueueVisible = false;
         this.isLyricsVisible = false;
         this.currentLyrics = null;
+        this.currentSyncedLyrics = null;
+        this.currentLyricsLineIndex = -1;
         this.currentLyricsTrackId = null;
         this.nowPlayingMessage = null;
         this.idleTimeout = null;
@@ -76,6 +78,9 @@ class MusicPlayer {
         this._consecutiveFailures = 0;
         this._playbackInterval = null;
         this.playSessionId = Date.now();
+        this.trackStartMs = null;
+        this.trackPauseOffsetMs = 0;
+        this.lastPauseTimeMs = null;
     }
 
     async connect(voiceChannel, textChannel) {
@@ -218,6 +223,8 @@ class MusicPlayer {
         this._clearIdleTimeout();
 
         this.trackStartMs = Date.now();
+        this.trackPauseOffsetMs = 0;
+        this.lastPauseTimeMs = null;
 
         if (!replay) {
             this.currentIndex++;
@@ -225,6 +232,8 @@ class MusicPlayer {
                 this.currentTrack.played = true;
             }
             this.currentLyrics = null;
+            this.currentSyncedLyrics = null;
+            this.currentLyricsLineIndex = -1;
             this.currentLyricsTrackId = null;
         }
 
@@ -448,6 +457,7 @@ class MusicPlayer {
         if (this.isPlaying && !this.isPaused) {
             this.player.pause();
             this.isPaused = true;
+            this.lastPauseTimeMs = Date.now();
             this.updateNowPlayingMessage();
             return true;
         }
@@ -458,6 +468,10 @@ class MusicPlayer {
         if (this.isPaused) {
             this.player.unpause();
             this.isPaused = false;
+            if (this.lastPauseTimeMs) {
+                this.trackPauseOffsetMs += Date.now() - this.lastPauseTimeMs;
+                this.lastPauseTimeMs = null;
+            }
             this.updateNowPlayingMessage();
             return true;
         }
@@ -821,7 +835,19 @@ class MusicPlayer {
 
             embeds.push(queueEmbed);
         } else if (this.isLyricsVisible) {
-            const lyricsText = this.currentLyrics || "⏳ *Searching lyrics...*";
+            let lyricsText = this.currentLyrics || "⏳ *Searching lyrics...*";
+
+            if (this.currentSyncedLyrics && this.currentLyricsLineIndex >= 0) {
+                const lines = this.currentSyncedLyrics;
+                const i = this.currentLyricsLineIndex;
+                
+                const prevLine = i > 0 ? `*${lines[i - 1].text || '...'}*` : "";
+                const currentLine = `**${lines[i].text || '🎵'}**`;
+                const nextLine = i < lines.length - 1 ? `*${lines[i + 1].text || '...'}*` : "";
+
+                lyricsText = [prevLine, currentLine, nextLine].filter(Boolean).join("\n\n");
+            }
+
             const lyricsEmbed = new EmbedBuilder()
                 .setColor(config.embedColor)
                 .setTitle("🎵 Lyrics")
@@ -866,9 +892,15 @@ class MusicPlayer {
 
             if (result && result.lyrics) {
                 this.currentLyrics = `**Song:** ${result.title}\n**Artist:** ${result.artist}\n\n${result.lyrics}`;
+                if (result.syncedLyrics) {
+                    this.currentSyncedLyrics = result.syncedLyrics;
+                    this.currentLyricsLineIndex = -1;
+                }
             } else {
                 this.currentLyrics =
                     "❌ *No lyrics were found for this track.*";
+                this.currentSyncedLyrics = null;
+                this.currentLyricsLineIndex = -1;
             }
             this.currentLyricsTrackId = trackId;
             this.updateNowPlayingMessage();
@@ -1012,6 +1044,8 @@ class MusicPlayer {
         this.isQueueVisible = false;
         this.isLyricsVisible = false;
         this.currentLyrics = null;
+        this.currentSyncedLyrics = null;
+        this.currentLyricsLineIndex = -1;
         this.currentLyricsTrackId = null;
         this.connection = null;
         this.player = null;
@@ -1031,11 +1065,46 @@ class MusicPlayer {
 
     _startPlaybackInterval() {
         this._stopPlaybackInterval();
+        
+        let lastRegularUpdate = Date.now();
+        
         this._playbackInterval = setInterval(() => {
-            if (this.isPlaying && !this.isPaused) {
+            if (!this.isPlaying || this.isPaused) return;
+
+            const now = Date.now();
+            let shouldUpdate = false;
+
+            // Handle synchronized lyrics tracking
+            if (this.isLyricsVisible && this.currentSyncedLyrics) {
+                const elapsedMs = now - (this.trackStartMs || now) - this.trackPauseOffsetMs;
+                const lines = this.currentSyncedLyrics;
+                let newLineIndex = -1;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (elapsedMs >= lines[i].timeMs) {
+                        newLineIndex = i;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (newLineIndex !== this.currentLyricsLineIndex) {
+                    this.currentLyricsLineIndex = newLineIndex;
+                    shouldUpdate = true;
+                }
+            }
+
+            // Regular fallback update every 5 seconds (to keep components fresh)
+            if (now - lastRegularUpdate >= 5000) {
+                // If we didn't just update for lyrics, do it now
+                shouldUpdate = true;
+                lastRegularUpdate = now;
+            }
+
+            if (shouldUpdate) {
                 this.updateNowPlayingMessage();
             }
-        }, 5000); // 5 seconds
+        }, 1000); // 1-second tick for lyric precision
     }
 
     _stopPlaybackInterval() {

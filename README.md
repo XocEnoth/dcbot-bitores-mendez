@@ -1,4 +1,4 @@
-# 🤖 Bitores Mendez Discord Bot (v6.8.0)
+# 🤖 Bitores Mendez Discord Bot (v6.8.1)
 
 [![discord.js](https://img.shields.io/badge/discord.js-v14.26-blue.svg?logo=discord&logoColor=white)](https://discord.js.org/)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.12.0-green.svg?logo=node.js&logoColor=white)](https://nodejs.org/)

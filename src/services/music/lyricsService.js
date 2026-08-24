@@ -103,6 +103,47 @@ const searchLrclib = async (title, artist) => {
     return null;
 };
 
+// --- Synced Lyrics Parser ---
+
+/**
+ * Parses an LRC formatted string into an array of timestamped objects.
+ * Example format: [03:12.40] Line of lyrics
+ * 
+ * @param {string} lrcString - The raw LRC formatted string
+ * @returns {Array<{timeMs: number, text: string}> | null} Array of parsed lyric lines, or null if invalid
+ */
+const parseSyncedLyrics = (lrcString) => {
+    if (!lrcString) return null;
+    
+    const lines = lrcString.split('\n');
+    const parsed = [];
+    
+    // Matches standard LRC time tags like [01:23.45] or [01:23.456]
+    const timeRegex = /\[(\d{2,}):(\d{2})(?:\.(\d{2,3}))?\]/;
+    
+    for (const line of lines) {
+        const match = timeRegex.exec(line);
+        if (match) {
+            const minutes = parseInt(match[1], 10);
+            const seconds = parseInt(match[2], 10);
+            
+            let milliseconds = 0;
+            if (match[3]) {
+                milliseconds = parseInt(match[3], 10);
+                // If it's a 2-digit centisecond (e.g., .45 = 450ms), multiply by 10
+                if (match[3].length === 2) milliseconds *= 10;
+            }
+            
+            const timeMs = (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
+            const text = line.replace(timeRegex, '').trim();
+            
+            parsed.push({ timeMs, text });
+        }
+    }
+    
+    return parsed.length > 0 ? parsed : null;
+};
+
 // --- Public API ---
 
 const searchLyrics = async (rawTitle, rawArtist) => {
@@ -118,6 +159,7 @@ const searchLyrics = async (rawTitle, rawArtist) => {
             title: result.trackName || title,
             artist: result.artistName || artist || "Unknown Artist",
             lyrics: result.plainLyrics,
+            syncedLyrics: parseSyncedLyrics(result.syncedLyrics)
         };
     }
 
