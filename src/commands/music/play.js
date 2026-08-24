@@ -138,7 +138,6 @@ const execute = async (message, args) => {
 
         tracks.forEach((t) => (t.requester = message.author));
 
-        await new Promise((r) => setTimeout(r, 1000)); // Prevent Discord edit race condition
         await player.addTracks(tracks);
 
         if (tracks.length === 1) {
