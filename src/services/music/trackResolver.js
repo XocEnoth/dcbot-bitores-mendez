@@ -60,7 +60,10 @@ const ytDlpVideoInfo = async (url) => {
 
 const ytDlpSearch = async (query) => {
     logger.info(`Falling back to yt-dlp for search: ${query}`);
-    const info = await youtubeDl(`ytsearch:${query}`, getYtDlpBaseOptions());
+    let info = await youtubeDl(`ytsearch:${query}`, getYtDlpBaseOptions());
+    if (info.entries && info.entries.length > 0) {
+        info = info.entries[0];
+    }
     return {
         title: info.title || 'Unknown Title',
         author: info.uploader || info.channel || 'Unknown Artist',
