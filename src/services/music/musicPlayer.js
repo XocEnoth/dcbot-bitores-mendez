@@ -199,7 +199,7 @@ class MusicPlayer {
         } else {
             this.updateNowPlayingMessage();
         }
-        
+
         this._startBackgroundResolver();
     }
 
@@ -226,13 +226,14 @@ class MusicPlayer {
         } else {
             this.updateNowPlayingMessage();
         }
-        
+
         this._startBackgroundResolver();
     }
 
     async playNext(replay = false, useSoundCloudFallback = false) {
         if (this.destroyed) return;
 
+        this.playSessionId = Date.now();
         const currentSessionId = this.playSessionId;
 
         this._killProcess();
@@ -269,7 +270,17 @@ class MusicPlayer {
         if (track.unresolved) {
             track._isResolving = true;
             try {
-                const resolvedTrack = await trackResolver.searchYouTube(track.title, track.author);
+                const resolvedTrack = await trackResolver.searchYouTube(
+                    track.title,
+                    track.author,
+                );
+
+                // If the user skipped or stopped while resolving, abort to prevent orphaned processes
+                if (this.playSessionId !== currentSessionId) {
+                    track._isResolving = false;
+                    return;
+                }
+
                 if (resolvedTrack) {
                     track.url = resolvedTrack.url;
                     track.duration = resolvedTrack.duration;
@@ -280,7 +291,10 @@ class MusicPlayer {
                     throw new Error("Track not found on YouTube");
                 }
             } catch (error) {
-                logger.error(`[Player] Failed to resolve track: ${track.title}`, error);
+                logger.error(
+                    `[Player] Failed to resolve track: ${track.title}`,
+                    error,
+                );
                 await this.textChannel
                     ?.send({
                         embeds: [
@@ -323,7 +337,12 @@ class MusicPlayer {
             let targetUrl = track.url;
             if (useSoundCloudFallback) {
                 // Remove ytsearch/url logic and just search soundcloud directly
-                let cleanTitle = track.title.replace(/[\(\[].*?(official|lyric|video|audio|music|live).*?[\)\]]/gi, "").trim();
+                let cleanTitle = track.title
+                    .replace(
+                        /[\(\[].*?(official|lyric|video|audio|music|live).*?[\)\]]/gi,
+                        "",
+                    )
+                    .trim();
                 if (!cleanTitle) cleanTitle = track.title; // Fallback if regex stripped everything
                 const query = `${cleanTitle} ${track.author || ""}`.trim();
                 targetUrl = `scsearch1:${query}`;
@@ -341,16 +360,24 @@ class MusicPlayer {
                     err.signal !== "SIGTERM" &&
                     err.exitCode !== 255
                 ) {
-                    if (!useSoundCloudFallback && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+                    if (
+                        !useSoundCloudFallback &&
+                        this.currentTrack &&
+                        !this.currentTrack._scFallbackAttempted
+                    ) {
                         this.currentTrack._scFallbackAttempted = true;
-                        logger.warn(`[Player] yt-dlp failed extraction. Triggering SoundCloud fallback for "${track.title}"...`);
+                        logger.warn(
+                            `[Player] yt-dlp failed extraction. Triggering SoundCloud fallback for "${track.title}"...`,
+                        );
                         // Ensure we don't trigger multiple playNext calls by checking if we are still on the same session
                         if (this.playSessionId === currentSessionId) {
                             this.playNext(true, true).catch(logger.error);
                         }
                         return;
                     } else if (useSoundCloudFallback) {
-                        logger.error(`[Player] SoundCloud fallback extraction failed for "${track.title}".`);
+                        logger.error(
+                            `[Player] SoundCloud fallback extraction failed for "${track.title}".`,
+                        );
                     }
 
                     logger.error(
@@ -386,11 +413,16 @@ class MusicPlayer {
             // (done efficiently by opusscript) — no additional FFmpeg decode step.
 
             const ffmpegArgs = [
-                "-fflags", "+nobuffer",     // Don't buffer input
-                "-flags", "low_delay",      // Enable low delay mode
-                "-analyzeduration", "0",    // Skip lengthy format analysis (input is known audio)
-                "-probesize", "32000",      // Reduce probe buffer to detect codec quickly
-                "-i", "pipe:0",             // Read from stdin (piped from yt-dlp)
+                "-fflags",
+                "+nobuffer", // Don't buffer input
+                "-flags",
+                "low_delay", // Enable low delay mode
+                "-analyzeduration",
+                "0", // Skip lengthy format analysis (input is known audio)
+                "-probesize",
+                "32000", // Reduce probe buffer to detect codec quickly
+                "-i",
+                "pipe:0", // Read from stdin (piped from yt-dlp)
             ];
 
             // Fast SoXR resampling instead of heavy SWR
@@ -431,23 +463,35 @@ class MusicPlayer {
             ffmpegProc.on("close", (code) => {
                 // Code 255 = killed by SIGTERM (normal during skip/stop)
                 if (code && code !== 0 && code !== 255) {
-                    if (!useSoundCloudFallback && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+                    if (
+                        !useSoundCloudFallback &&
+                        this.currentTrack &&
+                        !this.currentTrack._scFallbackAttempted
+                    ) {
                         this.currentTrack._scFallbackAttempted = true;
-                        logger.warn(`[Player] FFmpeg processing failed. Triggering SoundCloud fallback for "${track.title}"...`);
+                        logger.warn(
+                            `[Player] FFmpeg processing failed. Triggering SoundCloud fallback for "${track.title}"...`,
+                        );
                         if (this.playSessionId === currentSessionId) {
                             this.playNext(true, true).catch(logger.error);
                         }
                         return;
                     } else if (useSoundCloudFallback) {
-                        logger.error(`[Player] SoundCloud fallback also failed for "${track.title}".`);
+                        logger.error(
+                            `[Player] SoundCloud fallback also failed for "${track.title}".`,
+                        );
                         if (this.playSessionId === currentSessionId) {
-                            this.textChannel?.send({
-                                embeds: [
-                                    new EmbedBuilder()
-                                        .setColor(config.embedColor)
-                                        .setDescription(`❌ Failed to play **${truncate(track.title, 50)}** even after SoundCloud fallback. Skipping...`),
-                                ],
-                            }).catch(() => {});
+                            this.textChannel
+                                ?.send({
+                                    embeds: [
+                                        new EmbedBuilder()
+                                            .setColor(config.embedColor)
+                                            .setDescription(
+                                                `❌ Failed to play **${truncate(track.title, 50)}**. Skipping...\n\n*If this issue persists, please contact Discord: **xocenoth**.*`,
+                                            ),
+                                    ],
+                                })
+                                .catch(() => {});
                         }
                     }
 
@@ -476,14 +520,19 @@ class MusicPlayer {
             if (useSoundCloudFallback) {
                 this.updateNowPlayingMessage();
             } else {
-                this._sendNowPlaying().catch(err => logger.error(`Error sending now playing message`, err));
+                this._sendNowPlaying().catch((err) =>
+                    logger.error(`Error sending now playing message`, err),
+                );
             }
             this._startPlaybackInterval();
             this.fetchLyricsIfVisible();
         } catch (error) {
             if (!useSoundCloudFallback) {
-                logger.warn(`[Player] Synchronous error for "${track.title}". Triggering SoundCloud fallback.`);
-                if (this.currentTrack) this.currentTrack._scFallbackAttempted = true;
+                logger.warn(
+                    `[Player] Synchronous error for "${track.title}". Triggering SoundCloud fallback.`,
+                );
+                if (this.currentTrack)
+                    this.currentTrack._scFallbackAttempted = true;
                 await this.playNext(true, true);
                 return;
             }
@@ -533,7 +582,11 @@ class MusicPlayer {
         if (!this.isPlaying) return false;
         this._forceSkip = true;
         this._killProcess();
+        const wasIdle = this.player.state.status === AudioPlayerStatus.Idle;
         this.player.stop(true);
+        if (wasIdle) {
+            this._handleIdle().catch(() => {});
+        }
         return true;
     }
 
@@ -544,7 +597,11 @@ class MusicPlayer {
         this.currentIndex = index - 1;
         this._forceSkip = true;
         this._killProcess();
+        const wasIdle = this.player.state.status === AudioPlayerStatus.Idle;
         this.player.stop(true);
+        if (wasIdle) {
+            this._handleIdle().catch(() => {});
+        }
         return true;
     }
 
@@ -562,7 +619,6 @@ class MusicPlayer {
         this.isMuted = !this.isMuted;
         this._applyVolume();
     }
-
 
     _applyVolume() {
         if (this.player?.state?.resource?.volume) {
@@ -671,11 +727,28 @@ class MusicPlayer {
     // --- Private methods ---
 
     _killProcess() {
+        // Destroy the current audio resource explicitly to free up memory and stop stream buffering
+        if (
+            this.player &&
+            this.player.state.status !== AudioPlayerStatus.Idle
+        ) {
+            const resource = this.player.state.resource;
+            if (resource && resource.playStream) {
+                try {
+                    resource.playStream.destroy();
+                } catch {}
+            }
+        }
+
         // Kill yt-dlp subprocess
         if (this._currentProcess) {
             try {
                 if (!this._currentProcess.killed)
                     this._currentProcess.kill("SIGKILL");
+                if (this._currentProcess.stdout)
+                    this._currentProcess.stdout.destroy();
+                if (this._currentProcess.stderr)
+                    this._currentProcess.stderr.destroy();
             } catch {}
             this._currentProcess = null;
         }
@@ -684,6 +757,12 @@ class MusicPlayer {
             try {
                 if (!this._ffmpegProcess.killed)
                     this._ffmpegProcess.kill("SIGKILL");
+                if (this._ffmpegProcess.stdin)
+                    this._ffmpegProcess.stdin.destroy();
+                if (this._ffmpegProcess.stdout)
+                    this._ffmpegProcess.stdout.destroy();
+                if (this._ffmpegProcess.stderr)
+                    this._ffmpegProcess.stderr.destroy();
             } catch {}
             this._ffmpegProcess = null;
         }
@@ -868,7 +947,10 @@ class MusicPlayer {
         const embeds = [embed];
 
         if (this.isQueueVisible) {
-            const formatTrack = (t) => t.url ? `[${truncate(t.title, 50)}](${t.url})` : `**${truncate(t.title, 50)}**`;
+            const formatTrack = (t) =>
+                t.url
+                    ? `[${truncate(t.title, 50)}](${t.url})`
+                    : `**${truncate(t.title, 50)}**`;
 
             let queueText = `**1.** ${formatTrack(track)} - \`[NOW PLAYING]\`\n`;
             const upcoming = this.upcomingTracks.slice(0, 4);
@@ -893,12 +975,17 @@ class MusicPlayer {
             if (this.currentSyncedLyrics && this.currentLyricsLineIndex >= 0) {
                 const lines = this.currentSyncedLyrics;
                 const i = this.currentLyricsLineIndex;
-                
-                const prevLine = i > 0 ? `*${lines[i - 1].text || '...'}*` : "";
-                const currentLine = `**${lines[i].text || '🎵'}**`;
-                const nextLine = i < lines.length - 1 ? `*${lines[i + 1].text || '...'}*` : "";
 
-                lyricsText = [prevLine, currentLine, nextLine].filter(Boolean).join("\n\n");
+                const prevLine = i > 0 ? `*${lines[i - 1].text || "..."}*` : "";
+                const currentLine = `**${lines[i].text || "🎵"}**`;
+                const nextLine =
+                    i < lines.length - 1
+                        ? `*${lines[i + 1].text || "..."}*`
+                        : "";
+
+                lyricsText = [prevLine, currentLine, nextLine]
+                    .filter(Boolean)
+                    .join("\n\n");
             }
 
             const lyricsEmbed = new EmbedBuilder()
@@ -982,13 +1069,13 @@ class MusicPlayer {
 
         try {
             const msg = await this.textChannel.send(payload);
-            
+
             // If the player was stopped or skipped while the HTTP request was in flight, delete the ghost message
             if (this.playSessionId !== currentSessionId || !this.isPlaying) {
                 await msg.delete().catch(() => {});
                 return;
             }
-            
+
             this.nowPlayingMessage = msg;
         } catch (error) {
             logger.error("Failed to send now playing message", error);
@@ -1007,9 +1094,16 @@ class MusicPlayer {
         const playDuration = Date.now() - (this.trackStartMs || 0);
         // If stream ends in under 5 seconds, it's likely a 403 block or extraction error.
         // Prevent triggering this fallback if the user intentionally skipped the track (_forceSkip).
-        if (!this._forceSkip && playDuration < 5000 && this.currentTrack && !this.currentTrack._scFallbackAttempted) {
+        if (
+            !this._forceSkip &&
+            playDuration < 5000 &&
+            this.currentTrack &&
+            !this.currentTrack._scFallbackAttempted
+        ) {
             this.currentTrack._scFallbackAttempted = true;
-            logger.warn(`[Player] Stream ended prematurely for "${this.currentTrack.title}". Triggering SoundCloud fallback.`);
+            logger.warn(
+                `[Player] Stream ended prematurely for "${this.currentTrack.title}". Triggering SoundCloud fallback.`,
+            );
             this.playNext(true, true);
             return;
         }
@@ -1119,9 +1213,9 @@ class MusicPlayer {
 
     _startPlaybackInterval() {
         this._stopPlaybackInterval();
-        
+
         let lastRegularUpdate = Date.now();
-        
+
         this._playbackInterval = setInterval(() => {
             if (!this.isPlaying || this.isPaused) return;
 
@@ -1130,10 +1224,11 @@ class MusicPlayer {
 
             // Handle synchronized lyrics tracking
             if (this.isLyricsVisible && this.currentSyncedLyrics) {
-                const elapsedMs = now - (this.trackStartMs || now) - this.trackPauseOffsetMs;
+                const elapsedMs =
+                    now - (this.trackStartMs || now) - this.trackPauseOffsetMs;
                 const lines = this.currentSyncedLyrics;
                 let newLineIndex = -1;
-                
+
                 for (let i = 0; i < lines.length; i++) {
                     if (elapsedMs >= lines[i].timeMs) {
                         newLineIndex = i;
@@ -1175,46 +1270,51 @@ class MusicPlayer {
         const resolveLoop = async () => {
             while (!this.destroyed && this.queue.length > 0) {
                 // Find the first unresolved track that isn't currently being resolved
-                const trackToResolve = this.queue.find(t => t.unresolved && !t._isResolving);
-                
+                const trackToResolve = this.queue.find(
+                    (t) => t.unresolved && !t._isResolving,
+                );
+
                 if (!trackToResolve) {
                     // No unresolved tracks left, or they are all currently being resolved
-                    break; 
+                    break;
                 }
 
                 trackToResolve._isResolving = true;
-                
+
                 try {
-                    const resolvedTrack = await trackResolver.searchYouTube(trackToResolve.title, trackToResolve.author);
+                    const resolvedTrack = await trackResolver.searchYouTube(
+                        trackToResolve.title,
+                        trackToResolve.author,
+                    );
                     if (resolvedTrack) {
                         trackToResolve.url = resolvedTrack.url;
                         trackToResolve.duration = resolvedTrack.duration;
                         trackToResolve.durationRaw = resolvedTrack.durationRaw;
                         trackToResolve.thumbnail = resolvedTrack.thumbnail;
                         trackToResolve.unresolved = false;
-                        
+
                         // Dynamically update the queue UI card if it is actively visible
                         if (this.isQueueVisible) {
                             this.updateNowPlayingMessage();
                         }
                     } else {
                         // Failed to resolve, mark as unresolved=false so we don't try again forever
-                        trackToResolve.unresolved = false; 
+                        trackToResolve.unresolved = false;
                     }
                 } catch (error) {
                     trackToResolve.unresolved = false; // Prevent infinite loop on fail
                 } finally {
                     trackToResolve._isResolving = false;
                 }
-                
+
                 // Small delay (2s) to prevent YouTube rate limits
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise((r) => setTimeout(r, 2000));
             }
-            
+
             this._isResolvingBackground = false;
         };
 
-        resolveLoop().catch(err => {
+        resolveLoop().catch((err) => {
             logger.error("Background resolver loop encountered an error", err);
             this._isResolvingBackground = false;
         });
