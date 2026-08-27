@@ -1120,7 +1120,7 @@ class MusicPlayer {
                         new EmbedBuilder()
                             .setColor(config.embedColor)
                             .setDescription(
-                                "⚠️ Multiple tracks failed to play consecutively. Stopping playback to prevent loop. Please try again or check if YouTube is blocking the bot.",
+                                "⚠️ Multiple tracks failed to play consecutively. Stopping playback to prevent loop.\n\n*If this issue persists, please contact Discord: **xocenoth**.*",
                             ),
                     ],
                 })
@@ -1203,6 +1203,10 @@ class MusicPlayer {
         } catch {}
         this.nowPlayingMessage = null;
         this._clearIdleTimeout();
+        if (this.aloneTimeout) {
+            clearTimeout(this.aloneTimeout);
+            this.aloneTimeout = null;
+        }
 
         this._stopPlaybackInterval();
 
