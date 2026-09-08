@@ -195,6 +195,8 @@ class MusicPlayer {
 
         if (!this.isPlaying) {
             this.currentIndex = startIndex - 1;
+            this._consecutiveFailures = 0;
+            this._clearIdleTimeout();
             await this.playNext();
         } else {
             this.updateNowPlayingMessage();
@@ -222,6 +224,8 @@ class MusicPlayer {
 
         if (!this.isPlaying) {
             this.currentIndex = insertPos - 1;
+            this._consecutiveFailures = 0;
+            this._clearIdleTimeout();
             await this.playNext();
         } else {
             this.updateNowPlayingMessage();
@@ -354,6 +358,9 @@ class MusicPlayer {
             this._currentProcess = subprocess;
 
             subprocess.catch((err) => {
+                // If session changed (user skipped), this process is orphaned — do nothing
+                if (this.playSessionId !== currentSessionId) return;
+
                 // Suppress expected SIGTERM/kill errors
                 if (
                     !err.killed &&
@@ -461,6 +468,9 @@ class MusicPlayer {
             }
 
             ffmpegProc.on("close", (code) => {
+                // If session changed, this is an orphaned process — ignore its exit
+                if (this.playSessionId !== currentSessionId) return;
+
                 // Code 255 = killed by SIGTERM (normal during skip/stop)
                 if (code && code !== 0 && code !== 255) {
                     if (
@@ -510,6 +520,13 @@ class MusicPlayer {
             });
 
             resource.volume.setVolume(this.isMuted ? 0 : this.volume / 100);
+
+            // Final session check — abort if user skipped during stream setup
+            if (this.playSessionId !== currentSessionId) {
+                try { subprocess.kill('SIGKILL'); } catch {}
+                try { ffmpegProc.kill('SIGKILL'); } catch {}
+                return;
+            }
 
             this.player.play(resource);
             this.isPlaying = true;
@@ -733,36 +750,56 @@ class MusicPlayer {
             this.player.state.status !== AudioPlayerStatus.Idle
         ) {
             const resource = this.player.state.resource;
-            if (resource && resource.playStream) {
-                try {
-                    resource.playStream.destroy();
-                } catch {}
+            if (resource) {
+                // Destroy the readable stream feeding the audio resource
+                if (resource.playStream) {
+                    try {
+                        resource.playStream.destroy();
+                    } catch {}
+                }
+                // Also destroy the audio stream if it's different from playStream
+                if (resource.audioStream && resource.audioStream !== resource.playStream) {
+                    try {
+                        resource.audioStream.destroy();
+                    } catch {}
+                }
             }
         }
 
         // Kill yt-dlp subprocess
         if (this._currentProcess) {
             try {
-                if (!this._currentProcess.killed)
-                    this._currentProcess.kill("SIGKILL");
-                if (this._currentProcess.stdout)
+                // Unpipe stdout before killing to prevent buffered data leak
+                if (this._currentProcess.stdout) {
+                    this._currentProcess.stdout.unpipe();
                     this._currentProcess.stdout.destroy();
-                if (this._currentProcess.stderr)
+                }
+                try {
+                    this._currentProcess.kill('SIGKILL');
+                } catch {}
+                if (this._currentProcess.stderr) {
                     this._currentProcess.stderr.destroy();
+                }
             } catch {}
             this._currentProcess = null;
         }
         // Kill FFmpeg subprocess
         if (this._ffmpegProcess) {
             try {
-                if (!this._ffmpegProcess.killed)
-                    this._ffmpegProcess.kill("SIGKILL");
-                if (this._ffmpegProcess.stdin)
+                // Destroy all stdio streams first to prevent buffered data from leaking
+                if (this._ffmpegProcess.stdin) {
                     this._ffmpegProcess.stdin.destroy();
-                if (this._ffmpegProcess.stdout)
+                }
+                if (this._ffmpegProcess.stdout) {
+                    this._ffmpegProcess.stdout.unpipe();
                     this._ffmpegProcess.stdout.destroy();
-                if (this._ffmpegProcess.stderr)
+                }
+                if (this._ffmpegProcess.stderr) {
                     this._ffmpegProcess.stderr.destroy();
+                }
+                try {
+                    this._ffmpegProcess.kill('SIGKILL');
+                } catch {}
             } catch {}
             this._ffmpegProcess = null;
         }
