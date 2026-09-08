@@ -207,7 +207,9 @@ class MusicPlayer {
 
     async insertTracks(tracks) {
         // Insert right after the current track so it plays next
-        const insertPos = this.currentIndex + 1;
+        // Clamp insertPos to queue.length to handle the case where currentIndex
+        // has advanced past the end of the queue (e.g., after the last song ended)
+        const insertPos = Math.min(this.currentIndex + 1, this.queue.length);
         this.queue.splice(insertPos, 0, ...tracks);
 
         // Also insert into originalQueue to preserve insertion intention
